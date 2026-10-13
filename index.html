@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#F8F6F0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="TrackFlow">
+  <meta name="description" content="Sleek offline dual-account (BOB & ICICI) expense tracker with timestamp precision, low balance alerts, and monthly category insights.">
+  
+  <title>TrackFlow - Minimalist Expense Ledger</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Google Fonts: Newsreader (Editorial Serif), Plus Jakarta Sans & Outfit (Clean dot-free numerals) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ====================================================================
+       AUTHENTICATION & MOBILE LOCK SCREEN OVERLAY
+       ==================================================================== -->
+  <div class="auth-lock-overlay" id="authOverlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-brand-wrap">
+        <span class="auth-logo-dot"></span>
+        <h2 class="auth-title">TrackFlow</h2>
+        <p class="auth-sub">Dual-Partner Shared Ledger & Private Vault</p>
+        <span class="auth-whitelist-pill">Authorized Access Only</span>
+      </div>
+
+      <div class="auth-error-banner" id="authErrorBanner"></div>
+
+      <form id="authLoginForm" class="auth-form">
+        <div class="auth-input-group">
+          <label for="authPhoneInput">Mobile Number</label>
+          <div class="auth-phone-wrap">
+            <span class="auth-country-code">+91</span>
+            <input type="tel" id="authPhoneInput" class="auth-phone-input" placeholder="10-digit number" maxlength="10" required autofocus autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="auth-input-group">
+          <label for="authPasswordInput">Access Password</label>
+          <div class="auth-pass-wrap">
+            <input type="password" id="authPasswordInput" class="auth-pass-input" placeholder="Enter password" required autocomplete="current-password">
+            <button type="button" class="auth-toggle-pass-btn" id="toggleAuthPassBtn" aria-label="Toggle password visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-login-btn" id="authSubmitBtn">
+          <span>Enter Ledger</span>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-layout" id="app">
+    
+    <!-- ====================================================================
+         DESKTOP SIDEBAR PANEL (Shown only on Desktop view >= 860px)
+         ==================================================================== -->
+    <aside class="desktop-sidebar" id="desktopSidebar">
+      <div class="sidebar-brand-box">
+        <div class="logo-mark">
+          <span class="sage-dot"></span>
+        </div>
+        <div class="brand-text-wrap">
+          <span class="brand-title">TrackFlow</span>
+          <span class="brand-sub">BOB & ICICI Ledger</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu Items with Clean Silhouette Icons -->
+      <nav class="sidebar-nav">
+        <button class="sidebar-item active" data-tab="tab-dashboard">
+          <span class="silhouette-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h3v7H4zm6 0h3v7h-3zm6 0h3v7h-3zM2 19h19v2H2zm10-17L2 7v2h19V7z"/></svg>
+          </span>
+          <span class="sidebar-item-label">Ledger</span>
+        </button>
+
+        <button class="sidebar-item" data-tab="tab-analytics">
+          <span class="silhouette-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+          </span>
+          <span class="sidebar-item-label">Monthly Insights</span>
+        </button>
+
+        <button class="sidebar-item highlight-add-btn" data-tab="tab-add">
+          <span class="silhouette-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          </span>
+          <span class="sidebar-item-label">Record Expense</span>
+        </button>
+
+        <button class="sidebar-item" data-tab="tab-history">
+          <span class="silhouette-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+          </span>
+          <span class="sidebar-item-label">History & Audit</span>
+        </button>
+
+        <button class="sidebar-item" data-tab="tab-settings">
+          <span class="silhouette-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          </span>
+          <span class="sidebar-item-label">Settings</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer Quick Balance Summary -->
+      <div class="sidebar-footer">
+        <!-- User Session Indicator -->
+        <div class="user-identity-box" id="sidebarUserBox">
+          <div class="user-identity-header">
+            <span class="user-badge-tag" id="sidebarUserRole">Primary User</span>
+            <button class="user-logout-btn" id="sidebarLogoutBtn" title="Log Out from this device">Log Out</button>
+          </div>
+          <span class="user-phone-val" id="sidebarUserPhone">+91 7418753113</span>
+        </div>
+
+        <div class="sidebar-accounts-box" id="sidebarAccountsBox">
+          <div class="sidebar-acc-row">
+            <span class="sidebar-acc-tag bob-tag">BOB</span>
+            <span class="sidebar-acc-val" id="sidebarBobBal">₹0.00</span>
+          </div>
+          <div class="sidebar-acc-row" id="sidebarSecondAccRow">
+            <span class="sidebar-acc-tag icici-tag" id="sidebarSecondAccTag">ICICI</span>
+            <span class="sidebar-acc-val" id="sidebarIciciBal">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="sidebar-status-meta">
+          <span class="offline-indicator" id="sidebarSyncStatus">
+            <span class="status-pip"></span> Synced
+          </span>
+          <button class="sidebar-widget-trigger" id="desktopWidgetBtn">
+            Widget
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ====================================================================
+         MAIN VIEWPORT WRAPPER (Adapts to Desktop & Mobile)
+         ==================================================================== -->
+    <div class="main-viewport-wrapper">
+
+      <!-- Mobile Topbar (Shown on mobile screens < 860px, hidden on desktop) -->
+      <header class="app-topbar mobile-topbar">
+        <div class="topbar-left">
+          <div class="logo-mark">
+            <span class="sage-dot"></span>
+          </div>
+          <div class="brand-text-wrap">
+            <h1 class="brand-title">TrackFlow</h1>
+            <span class="brand-sub" id="topbarBrandSub">Shared BOB & Vault</span>
+          </div>
+        </div>
+        
+        <div class="topbar-right">
+          <span class="user-badge-tag" id="mobileUserBadge" style="font-size: 0.7rem; padding: 2px 6px;">7418753113</span>
+          <button class="user-logout-btn" id="mobileLogoutBtn" style="padding: 2px 6px; font-size: 0.7rem;" title="Log Out">Exit</button>
+          <span class="offline-indicator" id="offlineStatus">
+            <span class="status-pip"></span>
+          </span>
+          <button class="topbar-text-btn" id="openWidgetViewBtn" title="Open Compact Widget">
+            Widget
+          </button>
+          <button class="topbar-text-btn install-btn" id="installAppBtn" title="Install to Phone / Desktop" style="display: none;">
+            Install
+          </button>
+        </div>
+      </header>
+
+      <!-- Global Low Balance Warning Banner (< 500 Rs) -->
+      <section class="warning-callout" id="globalWarningBanner" style="display: none;">
+        <div class="warning-callout-inner">
+          <div class="warning-left-group">
+            <span class="warning-silhouette-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+            </span>
+            <span class="warning-tag">LOW BALANCE NOTICE</span>
+            <p class="warning-text" id="warningBannerText">One or more bank accounts have dropped below the minimum ₹500 balance!</p>
+          </div>
+          <button class="warning-close-link" id="dismissWarningBtn" aria-label="Dismiss Alert">Dismiss</button>
+        </div>
+      </section>
+
+      <!-- Main Content Area (Card-Free Design) -->
+      <main class="content-viewport">
+
+        <!-- ====================================================================
+             TAB 1: DASHBOARD LEDGER
+             ==================================================================== -->
+        <section class="tab-view active" id="tab-dashboard">
+          
+          <!-- Total Net Balance Hero (No Cards, Pure Editorial Layout) -->
+          <div class="balance-hero-section">
+            <div class="section-meta-row">
+              <span class="eyebrow-label">TOTAL AVAILABLE BALANCE</span>
+              <button class="text-action-link" id="quickAddMoneyBtn">+ Add Funds</button>
+            </div>
+            <div class="hero-amount-number" id="totalBalanceDisplay">₹0.00</div>
+            
+            <div class="hero-flow-summary">
+              <div class="flow-stat">
+                <span class="flow-label">Starting Total</span>
+                <span class="flow-num" id="totalInitialDisplay">₹0</span>
+              </div>
+              <div class="flow-divider">/</div>
+              <div class="flow-stat">
+                <span class="flow-label">Total Outflow</span>
+                <span class="flow-num spent-negative" id="totalSpentDisplay">₹0</span>
+              </div>
+              <div class="flow-divider">/</div>
+              <div class="flow-stat">
+                <span class="flow-label">As of</span>
+                <span class="flow-num" id="currentDateBadge">Today</span>
+            </div>
+          </div>
+
+          <div class="hairline-divider"></div>
+
+          <!-- ====================================================================
+               PARTNER REIMBURSEMENT REMINDERS (BOB Settlement Notifications)
+               ==================================================================== -->
+          <section class="partner-reminders-section" id="partnerRemindersSection" style="display: none;">
+            <div class="reminders-header-bar">
+              <div class="reminders-header-left">
+                <span class="reminder-silhouette-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                </span>
+                <span class="reminders-title-tag">PARTNER REIMBURSEMENT REMINDERS</span>
+              </div>
+              <span class="reminders-badge-pill" id="reminderCountBadge">0 pending</span>
+            </div>
+            
+            <div class="reminders-list" id="partnerRemindersList">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+
+          <!-- Two Accounts Split View (Card-free, clean typography columns) -->
+          <div class="accounts-ledger-split">
+            
+            <!-- BOB Column -->
+            <div class="account-ledger-col bob-ledger" id="bobCard">
+              <div class="acc-col-header">
+                <div class="acc-name-wrap">
+                  <span class="acc-pill bob-pill">BOB</span>
+                  <span class="acc-desc">Bank of Baroda</span>
+                </div>
+                <div class="acc-header-actions">
+                  <button class="acc-settings-link" id="dashboardPairPartnerBtn" style="color: var(--bob-accent); font-weight: 700;" title="Pair partner and configure reminders">Pair Partner ⚙</button>
+                  <button class="acc-settings-link bob-partner-trigger" id="openBobPartnerBtn" title="View partner statement for BOB">Partner Ledger →</button>
+                  <button class="acc-settings-link edit-acc-btn" data-account="BOB" title="Adjust starting balance">Edit</button>
+                </div>
+              </div>
+
+              <div class="acc-balance-block">
+                <span class="acc-num-label">Current Balance</span>
+                <div class="acc-main-num" id="bobBalance">₹0.00</div>
+              </div>
+
+              <div class="acc-flow-meta">
+                <span class="acc-outflow-text">Spent: <strong id="bobSpent">₹0</strong></span>
+                <span class="low-balance-warning-pill" id="bobWarningBadge" style="display: none;">
+                  <span class="pill-warning-icon">
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                  </span>
+                  Below ₹500
+                </span>
+              </div>
+            </div>
+
+            <div class="vertical-ledger-divider"></div>
+
+            <!-- ICICI Column -->
+            <div class="account-ledger-col icici-ledger" id="iciciCard">
+              <div class="acc-col-header">
+                <div class="acc-name-wrap">
+                  <span class="acc-pill icici-pill">ICICI</span>
+                  <span class="acc-desc">ICICI Bank</span>
+                </div>
+                <button class="acc-settings-link edit-acc-btn" data-account="ICICI" title="Adjust starting balance">Edit</button>
+              </div>
+
+              <div class="acc-balance-block">
+                <span class="acc-num-label">Current Balance</span>
+                <div class="acc-main-num" id="iciciBalance">₹0.00</div>
+              </div>
+
+              <div class="acc-flow-meta">
+                <span class="acc-outflow-text">Spent: <strong id="iciciSpent">₹0</strong></span>
+                <span class="low-balance-warning-pill" id="iciciWarningBadge" style="display: none;">
+                  <span class="pill-warning-icon">
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                  </span>
+                  Below ₹500
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="hairline-divider"></div>
+
+          <!-- Action Bar: Record & Monthly Report -->
+          <div class="action-buttons-strip">
+            <button class="primary-sage-btn" id="quickRecordBtn">
+              <span class="btn-silhouette-icon">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              </span>
+              <span>Record Expense</span>
+            </button>
+            <button class="secondary-outline-btn" id="viewMonthlySummaryBtn">
+              <span>Monthly Insights</span>
+            </button>
+          </div>
+
+          <!-- This Month Briefing Banner (Editorial) -->
+          <div class="monthly-briefing-strip" id="quickMonthlyPreviewCard">
+            <div class="briefing-col">
+              <span class="briefing-eyebrow">THIS MONTH TOP CATEGORY</span>
+              <div class="briefing-val" id="previewTopCat">Loading...</div>
+              <span class="briefing-sub" id="previewTopCatAmount">₹0 spent</span>
+            </div>
+            <div class="briefing-sep"></div>
+            <div class="briefing-col right">
+              <span class="briefing-eyebrow">LEFT AT END OF MONTH</span>
+              <div class="briefing-val sage-text" id="previewMonthRemaining">₹0</div>
+              <span class="briefing-sub">Projected balance</span>
+            </div>
+          </div>
+
+          <!-- Recent Ledger Entries Section -->
+          <div class="ledger-section">
+            <div class="ledger-section-header">
+              <h2 class="ledger-heading">Recent Transactions</h2>
+              <button class="text-link" id="seeAllHistoryBtn">Full History →</button>
+            </div>
+            
+            <div class="ledger-entry-list" id="recentTransactionList">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ====================================================================
+             TAB 2: ADD EXPENSE FORM
+             ==================================================================== -->
+        <section class="tab-view" id="tab-add">
+          <div class="editorial-form-wrap">
+            <div class="form-title-group">
+              <h2 class="page-headline">Record Expense</h2>
+              <p class="page-subline">Select bank account, categorize payment, and record timestamp.</p>
+            </div>
+
+            <form id="expenseForm" class="sleek-form" autocomplete="off">
+              
+              <!-- Amount Input (Bold Underlined Editorial Number) -->
+              <div class="form-row-single">
+                <label for="expAmount" class="field-label">AMOUNT SPENT *</label>
+                <div class="editorial-amount-box">
+                  <span class="currency-tag">₹</span>
+                  <input type="number" id="expAmount" class="editorial-amount-field" placeholder="0" min="0.01" step="any" required inputmode="decimal">
+                </div>
+                <div class="quick-increment-strip">
+                  <button type="button" class="increment-pill" data-amt="50">+50</button>
+                  <button type="button" class="increment-pill" data-amt="100">+100</button>
+                  <button type="button" class="increment-pill" data-amt="200">+200</button>
+                  <button type="button" class="increment-pill" data-amt="500">+500</button>
+                  <button type="button" class="increment-pill" data-amt="1000">+1000</button>
+                </div>
+              </div>
+
+              <!-- Who Spent Selector (By Me vs By Partner) -->
+              <div class="form-row-single">
+                <div class="field-label-with-tip">
+                  <label class="field-label">WHO SPENT? *</label>
+                  <span class="field-sub-note" id="whoSpentHelpText">Choose who paid for this expense</span>
+                </div>
+                <div class="account-segmented-control who-spent-selector">
+                  <label class="segment-option">
+                    <input type="radio" name="whoSpentChoice" value="Me" checked id="radioSpentMe">
+                    <span class="segment-button">
+                      <strong>I Spent</strong>
+                      <span class="segment-sub">Direct Outflow</span>
+                    </span>
+                  </label>
+                  <label class="segment-option">
+                    <input type="radio" name="whoSpentChoice" value="Partner" id="radioSpentPartner">
+                    <span class="segment-button">
+                      <strong id="spentPartnerLabel">Partner Spent</strong>
+                      <span class="segment-sub">Creates Reimbursement Reminder</span>
+                    </span>
+                  </label>
+                </div>
+                <!-- Partner spend contextual guidance -->
+                <div class="partner-spend-alert-callout" id="partnerSpendNotice" style="display: none;">
+                  <span class="callout-silhouette-icon">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                  </span>
+                  <p id="partnerNoticeText">
+                    <strong>Partner Reimbursement Mode:</strong> When your partner spends on BOB, it is added to your Reminders saying <em>"You should send ₹... for ... to your partner"</em>. The money is only deducted from BOB once you tap <strong>"I Paid"</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Account Selector (BOB or ICICI Segmented Selector) -->
+              <div class="form-row-single">
+                <label class="field-label">ACCOUNT *</label>
+                <div class="account-segmented-control">
+                  <label class="segment-option">
+                    <input type="radio" name="accountChoice" value="BOB" checked id="radioBob">
+                    <span class="segment-button">
+                      <strong>BOB</strong>
+                      <span class="segment-sub" id="segmentBobBal">Bank of Baroda</span>
+                    </span>
+                  </label>
+                  <label class="segment-option">
+                    <input type="radio" name="accountChoice" value="ICICI" id="radioIcici">
+                    <span class="segment-button">
+                      <strong>ICICI</strong>
+                      <span class="segment-sub" id="segmentIciciBal">ICICI Bank</span>
+                    </span>
+                  </label>
+                </div>
+                <select id="expAccount" style="display: none;">
+                  <option value="BOB" selected>BOB</option>
+                  <option value="ICICI">ICICI</option>
+                </select>
+              </div>
+
+              <!-- Category Selector (Clean Silhouette Icons + Text, Zero Emojis) -->
+              <div class="form-row-single">
+                <label class="field-label">CATEGORY *</label>
+                <div class="category-pill-grid" id="categoryChips">
+                  <button type="button" class="sage-pill active" data-cat="Food & Dining">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+                    </span>
+                    <span>Food & Dining</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Groceries">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    </span>
+                    <span>Groceries</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Shopping">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/></svg>
+                    </span>
+                    <span>Shopping</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Travel & Fuel">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-5h14v5z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg>
+                    </span>
+                    <span>Travel & Fuel</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Bills & Utilities">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                    </span>
+                    <span>Bills & Utilities</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Entertainment">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+                    </span>
+                    <span>Entertainment</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Health & Medical">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/></svg>
+                    </span>
+                    <span>Health & Medical</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Education & Fees">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+                    </span>
+                    <span>Education</span>
+                  </button>
+
+                  <button type="button" class="sage-pill" data-cat="Other">
+                    <span class="cat-silhouette">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-8-2h2v-4h4v-2h-4V7h-2v4H7v2h4z"/></svg>
+                    </span>
+                    <span>Other</span>
+                  </button>
+                </div>
+                <input type="hidden" id="expCategory" value="Food & Dining">
+              </div>
+
+              <!-- To Whom (Paid To / Person / Shop) -->
+              <div class="form-row-single">
+                <label for="expToWhom" class="field-label">TO WHOM (RECIPIENT / PAYEE / MERCHANT) *</label>
+                <input type="text" id="expToWhom" class="clean-text-input" placeholder="e.g. Swiggy, Ramesh, Landlord, Amazon" required>
+              </div>
+
+              <!-- Description (For What) -->
+              <div class="form-row-single">
+                <label for="expDescription" class="field-label">DESCRIPTION (FOR WHAT) *</label>
+                <input type="text" id="expDescription" class="clean-text-input" placeholder="e.g. Lunch with team, monthly wifi bill" required>
+              </div>
+
+              <!-- Date & Time (Timestamp with Default Current Time or Custom Picker) -->
+              <div class="form-row-single timestamp-control-group">
+                <div class="timestamp-header-row">
+                  <label class="field-label">DATE & TIME (TIMESTAMP)</label>
+                  <button type="button" class="timestamp-toggle-btn" id="toggleCustomTimeBtn">
+                    Pick Custom Time
+                  </button>
+                </div>
+
+                <!-- Default Timestamp Notice -->
+                <div class="live-timestamp-box" id="liveTimestampNotice">
+                  <div class="timestamp-indicator">
+                    <span class="live-pulse-dot"></span>
+                    <span class="timestamp-mode-text">Current Time (Default):</span>
+                  </div>
+                  <div class="live-time-val" id="liveClockDisplay">Just now</div>
+                </div>
+
+                <!-- Custom DateTime Picker (Hidden by default, shown if user clicks 'Pick Custom Time') -->
+                <div class="custom-datetime-container" id="customDatetimeContainer" style="display: none;">
+                  <input type="datetime-local" id="expDateTime" class="clean-text-input">
+                  <button type="button" class="reset-live-time-btn" id="resetLiveTimeBtn">
+                    ↩ Reset to Current Time
+                  </button>
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="form-submit-row">
+                <button type="submit" class="primary-sage-btn full-width-btn" id="saveExpenseBtn">
+                  Save Transaction
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             TAB 3: MONTHLY ANALYTICS & INSIGHTS
+             ==================================================================== -->
+        <section class="tab-view" id="tab-analytics">
+          <div class="analytics-layout">
+            
+            <div class="analytics-header">
+              <div>
+                <h2 class="page-headline">Monthly Ledger</h2>
+                <p class="page-subline">Top spending category analysis and remaining balance.</p>
+              </div>
+
+              <!-- Month Selector -->
+              <div class="editorial-month-nav">
+                <button class="month-nav-arrow" id="prevMonthBtn" title="Previous Month">←</button>
+                <input type="month" id="selectedMonthInput" class="editorial-month-input">
+                <button class="month-nav-arrow" id="nextMonthBtn" title="Next Month">→</button>
+              </div>
+            </div>
+
+            <!-- TOP CATEGORY EDITORIAL SPOTLIGHT (No Cards, Minimal Banner) -->
+            <div class="top-category-spotlight" id="topCategoryBanner">
+              <div class="spotlight-badge">TOP SPENDING CATEGORY THIS MONTH</div>
+              <div class="spotlight-main">
+                <h3 class="spotlight-cat-title" id="topCatName">None</h3>
+                <div class="spotlight-amount" id="topCatAmountDisplay">₹0</div>
+              </div>
+              <p class="spotlight-stats" id="topCatStats">No expenses recorded for this month</p>
+            </div>
+
+            <!-- Monthly Figures Grid (Card-free editorial grid with hairlines) -->
+            <div class="month-figures-ledger">
+              <div class="figure-cell highlight-cell">
+                <span class="figure-label">LEFT AT END OF MONTH</span>
+                <div class="figure-value sage-color" id="monthRemainingBalance">₹0.00</div>
+                <span class="figure-sub" id="monthRemainingHint">Cumulative available</span>
+              </div>
+
+              <div class="figure-cell">
+                <span class="figure-label">TOTAL SPENT THIS MONTH</span>
+                <div class="figure-value" id="monthTotalSpent">₹0.00</div>
+                <span class="figure-sub" id="monthTxCount">0 transactions</span>
+              </div>
+
+              <div class="figure-cell">
+                <span class="figure-label">BOB SPENT THIS MONTH</span>
+                <div class="figure-value" id="monthBobSpent">₹0.00</div>
+                <span class="figure-sub" id="monthBobBalanceNow">Bal: ₹0</span>
+              </div>
+
+              <div class="figure-cell">
+                <span class="figure-label">ICICI SPENT THIS MONTH</span>
+                <div class="figure-value" id="monthIciciSpent">₹0.00</div>
+                <span class="figure-sub" id="monthIciciBalanceNow">Bal: ₹0</span>
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Category Spending Breakdown (Minimal progress lines) -->
+            <div class="analytics-subgroup">
+              <h3 class="subgroup-title">Spending by Category</h3>
+              <div class="category-breakdown-list" id="categoryBreakdownList">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Top Payees (To Whom) -->
+            <div class="analytics-subgroup">
+              <h3 class="subgroup-title">Top Payees & Recipients</h3>
+              <div class="payee-breakdown-list" id="payeeBreakdownList">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             TAB 4: TRANSACTION HISTORY
+             ==================================================================== -->
+        <section class="tab-view" id="tab-history">
+          <div class="history-layout">
+            
+            <div class="history-header">
+              <h2 class="page-headline">History & Audit</h2>
+              <p class="page-subline">Chronological timestamped ledger of all account activity.</p>
+            </div>
+
+            <!-- Search & Filter Controls -->
+            <div class="filter-bar">
+              <input type="text" id="historySearchInput" class="filter-search-input" placeholder="Search payee, description, note...">
+              <div class="filter-select-group">
+                <select id="historyAccountFilter" class="clean-select">
+                  <option value="ALL">All Accounts</option>
+                  <option value="BOB">BOB Only</option>
+                  <option value="ICICI">ICICI Only</option>
+                </select>
+                <select id="historyCategoryFilter" class="clean-select">
+                  <option value="ALL">All Categories</option>
+                  <option value="Food & Dining">Food & Dining</option>
+                  <option value="Groceries">Groceries</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Travel & Fuel">Travel & Fuel</option>
+                  <option value="Bills & Utilities">Bills & Utilities</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Health & Medical">Health & Medical</option>
+                  <option value="Education & Fees">Education</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Full Transaction Ledger List -->
+            <div class="ledger-entry-list full-ledger" id="fullTransactionList">
+              <!-- Populated via JS -->
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             TAB 5: SETTINGS & BACKUP
+             ==================================================================== -->
+        <section class="tab-view" id="tab-settings">
+          <div class="settings-layout">
+            
+            <div class="settings-header">
+              <h2 class="page-headline">Settings</h2>
+              <p class="page-subline">Configure baseline amounts, mobile widgets, and data backups.</p>
+            </div>
+
+            <!-- 1. BOB Partner Pairing & Reimbursement Reminders (TOP PRIORITY) -->
+            <div class="settings-block" id="partnerPairingSettingsBlock">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title" style="color: var(--bob-accent);">BOB Partner Pairing & Reimbursement Reminders</h3>
+                  <p class="settings-block-sub">Pair with your partner so when they spend on BOB, you get notified with reminders until you mark "Paid".</p>
+                </div>
+                <button type="button" class="text-action-link" id="testPartnerSpendBtn">+ Simulate Partner Spend</button>
+              </div>
+              
+              <form id="partnerSettingsForm" class="settings-form">
+                <div class="settings-input-grid">
+                  <div class="form-row-single">
+                    <label for="partnerNameInput" class="field-label">PARTNER NAME *</label>
+                    <input type="text" id="partnerNameInput" class="clean-text-input" placeholder="e.g. Priya, Alex, Rahul" required>
+                  </div>
+                  <div class="form-row-single">
+                    <label for="partnerPhoneInput" class="field-label">WHATSAPP / PHONE (OPTIONAL)</label>
+                    <input type="tel" id="partnerPhoneInput" class="clean-text-input" placeholder="e.g. 9876543210">
+                  </div>
+                  <div class="form-row-single">
+                    <label for="partnerUpiInput" class="field-label">PARTNER UPI ID (FOR 1-TAP PAY)</label>
+                    <input type="text" id="partnerUpiInput" class="clean-text-input" placeholder="e.g. partner@okhdfcbank or phone@upi">
+                  </div>
+                </div>
+
+                <div class="form-row-single" style="margin-bottom: 12px;">
+                  <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="autoNotifyBobCheckbox" checked style="accent-color: var(--sage-primary);">
+                    <span>Automatically send notifications in WhatsApp directly when BOB transactions or settlements occur</span>
+                  </label>
+                </div>
+
+                <div class="settings-action-btns-group">
+                  <button type="submit" class="primary-sage-btn">Save Partner Settings</button>
+                  <button type="button" class="secondary-outline-btn" id="copyPartnerSpendLinkBtn">Copy Partner Request Link</button>
+                  <button type="button" class="secondary-outline-btn" id="sendPartnerPairWhatsAppBtn">Send Pair Link via WhatsApp</button>
+                </div>
+              </form>
+
+              <!-- How Partner Pairing Works Box -->
+              <div class="partner-guide-box">
+                <div class="partner-guide-header">
+                  <span class="guide-tag">HOW IT WORKS</span>
+                  <strong>Dual BOB Settlement Workflow:</strong>
+                </div>
+                <ol class="partner-guide-list">
+                  <li><strong>Partner Spends on BOB:</strong> Choose <em>"Partner Spent"</em> when logging, or send your partner the request link to log it from their phone.</li>
+                  <li><strong>Active Reminder:</strong> TrackFlow pins a reminder on your Dashboard: <em>"You should send ₹[Amount] for [Purpose] to your partner"</em>. The money is <u>NOT</u> deducted yet.</li>
+                  <li><strong>You Pay Partner:</strong> Tap <strong>"I Paid"</strong>. The reminder stops immediately, and the amount is deducted from BOB account balance!</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- 2. Recurring Reminders & Pop-up Alerts Settings -->
+            <div class="settings-block" id="notificationSettingsBlock">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title" style="color: var(--sage-dark);">Recurring Reminders & Pop-up Notifications</h3>
+                  <p class="settings-block-sub">Configure how frequently reminders and pending partner settlements pop up on your screen.</p>
+                </div>
+                <span class="guide-tag" id="systemNotifyStatusBadge">Permission: Default</span>
+              </div>
+
+              <form id="notificationSettingsForm" class="settings-form">
+                <div class="settings-input-grid">
+                  <!-- Enable Recurring Pop-up Toggle -->
+                  <div class="form-row-single">
+                    <label class="field-label">POP-UP REMINDERS</label>
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; padding-top: 6px;">
+                      <input type="checkbox" id="recurringRemindersToggle" checked style="accent-color: var(--sage-primary); width: 16px; height: 16px;">
+                      <strong>Keep popping reminders automatically</strong>
+                    </label>
+                  </div>
+
+                  <!-- Pop-up Interval Selector -->
+                  <div class="form-row-single">
+                    <label for="reminderIntervalSelect" class="field-label">REPEAT FREQUENCY (INTERVAL)</label>
+                    <select id="reminderIntervalSelect" class="clean-select full-width-select">
+                      <option value="1">Every 1 Minute (Instant Demo / Fast Test)</option>
+                      <option value="5">Every 5 Minutes (Quick Follow-up)</option>
+                      <option value="15" selected>Every 15 Minutes (Recommended)</option>
+                      <option value="30">Every 30 Minutes</option>
+                      <option value="60">Every 1 Hour</option>
+                      <option value="120">Every 2 Hours</option>
+                      <option value="360">Every 6 Hours (Daily Summary)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Additional Toggles -->
+                <div class="settings-toggles-list" style="margin: 12px 0; display: flex; flex-direction: column; gap: 8px;">
+                  <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="notifySoundToggle" checked style="accent-color: var(--sage-primary);">
+                    <span>Play subtle audio chime when reminder pops up</span>
+                  </label>
+
+                  <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="lowBalanceRepeatToggle" checked style="accent-color: var(--sage-primary);">
+                    <span>Keep popping low balance alert if BOB or ICICI is below ₹500</span>
+                  </label>
+
+                  <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="systemNotifyToggle" checked style="accent-color: var(--sage-primary);">
+                    <span>Push to device lock screen / system notifications (when permission granted)</span>
+                  </label>
+                </div>
+
+                <div class="settings-action-btns-group">
+                  <button type="submit" id="saveNotificationSettingsBtn" class="primary-sage-btn">Save Notification Settings</button>
+                  <button type="button" class="secondary-outline-btn" id="enableSystemNotifyBtn">Enable Lock Screen Alerts</button>
+                  <button type="button" class="secondary-outline-btn" id="testNotificationPopBtn">Pop Test Notification Now</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- 2. Initial Balances Setting -->
+            <div class="settings-block">
+              <h3 class="settings-block-title">Initial Baseline Balances</h3>
+              <p class="settings-block-sub">Adjust starting balances for BOB and ICICI at any time.</p>
+              
+              <form id="initialBalancesForm" class="settings-form">
+                <div class="settings-input-grid">
+                  <div class="form-row-single">
+                    <label for="setBobInitial" class="field-label">BOB INITIAL (₹)</label>
+                    <input type="number" id="setBobInitial" class="clean-text-input" min="0" step="any" placeholder="0">
+                  </div>
+                  <div class="form-row-single">
+                    <label for="setIciciInitial" class="field-label">ICICI INITIAL (₹)</label>
+                    <input type="number" id="setIciciInitial" class="clean-text-input" min="0" step="any" placeholder="0">
+                  </div>
+                </div>
+                <button type="submit" class="secondary-outline-btn">Update Baseline Amounts</button>
+              </form>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Cloud Sync Status & Session -->
+            <div class="settings-block" id="cloudSyncSettingsBlock">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title">Cross-Device Cloud Sync</h3>
+                  <p class="settings-block-sub">Your data syncs automatically across all devices via the cloud.</p>
+                </div>
+                <span class="guide-tag" id="cloudSyncStatusBadge" style="background: var(--sage-tint); color: var(--sage-dark);">Synced</span>
+              </div>
+
+              <div class="user-identity-box" style="margin-top: 8px;">
+                <div class="user-identity-header">
+                  <span class="user-badge-tag" id="settingsUserBadge">Primary User</span>
+                  <button class="user-logout-btn" id="settingsLogoutBtn">Log Out</button>
+                </div>
+                <span class="user-phone-val" id="settingsUserPhone">+91 7418753113</span>
+                <p style="font-size: 0.78rem; color: var(--ink-muted); margin: 4px 0 0 0;">
+                  Session stays active until you tap Log Out. Data syncs in real-time across devices.
+                </p>
+              </div>
+
+              <div class="settings-action-btns-group" style="margin-top: 12px;">
+                <button type="button" class="secondary-outline-btn" id="manualSyncNowBtn">Sync Now</button>
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Private Account Vault (isolated per user, never shared cross-partner) -->
+            <div class="settings-block" id="privateAccountVaultBlock">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title" id="privateVaultTitle">Private Account Vault</h3>
+                  <p class="settings-block-sub" id="privateVaultSub">Your private accounts are only visible to you — never visible to the other partner.</p>
+                </div>
+              </div>
+
+              <div id="privateAccountsList" style="margin: 10px 0; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Populated via JS -->
+              </div>
+
+              <form id="addPrivateAccountForm" class="settings-form" style="margin-top: 8px;">
+                <div class="settings-input-grid">
+                  <div class="form-row-single">
+                    <label for="newPrivateAccName" class="field-label">NEW ACCOUNT NAME</label>
+                    <input type="text" id="newPrivateAccName" class="clean-text-input" placeholder="e.g. Savings, Axis, PF, Cash">
+                  </div>
+                  <div class="form-row-single">
+                    <label for="newPrivateAccBalance" class="field-label">STARTING BALANCE (₹)</label>
+                    <input type="number" id="newPrivateAccBalance" class="clean-text-input" min="0" step="any" placeholder="0">
+                  </div>
+                </div>
+                <button type="submit" class="secondary-outline-btn">Add Private Account</button>
+              </form>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Mobile Screen & Widget Guide -->
+            <div class="settings-block">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title">Mobile Screen & Offline Widget</h3>
+                  <p class="settings-block-sub">Run offline on your phone screen even when your laptop is turned off.</p>
+                </div>
+                <button class="text-action-link" id="openMobileGuideBtn">Setup Guide →</button>
+              </div>
+              
+              <div class="editorial-tip-box">
+                <p><strong>100% Offline:</strong> Operates entirely in browser local storage and service worker cache without network or login.</p>
+                <p><strong>Phone Home Screen:</strong> Open on mobile browser and tap <em>"Add to Home Screen"</em> to access this ledger like a native mobile app.</p>
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Report Download Centre -->
+            <div class="settings-block" id="reportDownloadBlock">
+              <div class="block-split-header">
+                <div>
+                  <h3 class="settings-block-title">Download Reports</h3>
+                  <p class="settings-block-sub">Generate filtered statements by date range — export as CSV (Excel) or print as PDF.</p>
+                </div>
+                <span class="guide-tag" style="background: var(--bob-tint); color: var(--bob-accent);">NEW</span>
+              </div>
+
+              <!-- Quick Range Pills -->
+              <div class="report-range-pills" id="reportRangePills">
+                <button class="range-pill active" data-range="this_month">This Month</button>
+                <button class="range-pill" data-range="last_month">Last Month</button>
+                <button class="range-pill" data-range="3_months">Last 3 Months</button>
+                <button class="range-pill" data-range="6_months">Last 6 Months</button>
+                <button class="range-pill" data-range="custom">Custom Range</button>
+              </div>
+
+              <!-- Custom Date Range (hidden unless custom is selected) -->
+              <div id="customDateRangeRow" style="display: none; margin-top: 10px;">
+                <div class="settings-input-grid">
+                  <div class="form-row-single">
+                    <label class="field-label">FROM DATE</label>
+                    <input type="date" id="reportFromDate" class="clean-text-input">
+                  </div>
+                  <div class="form-row-single">
+                    <label class="field-label">TO DATE</label>
+                    <input type="date" id="reportToDate" class="clean-text-input">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account & Type Filters -->
+              <div class="report-filter-row" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <div class="form-row-single" style="flex: 1; min-width: 120px;">
+                  <label class="field-label">ACCOUNT</label>
+                  <select id="reportAccountFilter" class="clean-text-input" style="padding: 7px 10px;">
+                    <option value="all">All Accounts</option>
+                    <option value="BOB">BOB Only</option>
+                    <option value="ICICI">ICICI Only</option>
+                  </select>
+                </div>
+                <div class="form-row-single" style="flex: 1; min-width: 120px;">
+                  <label class="field-label">TYPE</label>
+                  <select id="reportTypeFilter" class="clean-text-input" style="padding: 7px 10px;">
+                    <option value="all">All Types</option>
+                    <option value="expense">Expenses Only</option>
+                    <option value="income">Income Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Report Preview Summary -->
+              <div id="reportPreviewBox" class="editorial-tip-box" style="margin-top: 10px;">
+                <p id="reportPreviewText" style="margin: 0; font-size: 0.82rem;">Select a range above to preview the report.</p>
+              </div>
+
+              <!-- Download Buttons -->
+              <div class="backup-actions-row" style="margin-top: 10px;">
+                <button class="secondary-outline-btn" id="downloadReportCsvBtn">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:4px;vertical-align:-2px"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-3 8l-3-3 1.4-1.4 1.6 1.6 3.6-3.6L15 14l-5 5z"/></svg>
+                  Download CSV
+                </button>
+                <button class="secondary-outline-btn" id="downloadReportPdfBtn">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:4px;vertical-align:-2px"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V9H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V9H15c.83 0 1.5.67 1.5 1.5v2zm4-3H19v1h1.5V11H19v2h-1.5V9h3v1.5zM9 10.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-2h-1v2z"/></svg>
+                  Print / Save PDF
+                </button>
+              </div>
+            </div>
+
+            <div class="hairline-divider"></div>
+
+            <!-- Backup & Data Export -->
+            <div class="settings-block">
+              <h3 class="settings-block-title">Data Backup & Export</h3>
+              <p class="settings-block-sub">Full data backup as JSON, or raw CSV of all transactions.</p>
+              
+              <div class="backup-actions-row">
+                <button class="secondary-outline-btn" id="exportCsvBtn">Export All CSV</button>
+                <button class="secondary-outline-btn" id="exportJsonBtn">Backup JSON</button>
+                <label class="secondary-outline-btn file-label-btn">
+                  <span>Restore JSON</span>
+                  <input type="file" id="importJsonInput" accept=".json" style="display: none;">
+                </label>
+                <button class="danger-text-btn" id="resetAllDataBtn">Reset All Data</button>
+              </div>
+            </div>
+
+
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+    <!-- ====================================================================
+         BOTTOM MOBILE NAVIGATION BAR (Shown on Mobile screens < 860px)
+         ==================================================================== -->
+    <nav class="editorial-bottom-nav">
+      <button class="nav-btn active" data-tab="tab-dashboard">
+        <span class="nav-btn-icon silhouette-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h3v7H4zm6 0h3v7h-3zm6 0h3v7h-3zM2 19h19v2H2zm10-17L2 7v2h19V7z"/></svg>
+        </span>
+        <span class="nav-btn-text">Ledger</span>
+      </button>
+
+      <button class="nav-btn" data-tab="tab-analytics">
+        <span class="nav-btn-icon silhouette-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+        </span>
+        <span class="nav-btn-text">Monthly</span>
+      </button>
+
+      <!-- Center Add Action Button -->
+      <button class="nav-btn add-btn-highlight" data-tab="tab-add" id="navAddBtn" aria-label="Record Expense">
+        <span class="add-circle-mark">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </span>
+      </button>
+
+      <button class="nav-btn" data-tab="tab-history">
+        <span class="nav-btn-icon silhouette-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        </span>
+        <span class="nav-btn-text">History</span>
+      </button>
+
+      <button class="nav-btn" data-tab="tab-settings">
+        <span class="nav-btn-icon silhouette-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </span>
+        <span class="nav-btn-text">Settings</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- COMPACT MOBILE WIDGET MODAL (Clean Cream & Sage Design) -->
+  <div class="modal-backdrop" id="widgetOverlay" style="display: none;">
+    <div class="modal-dialog widget-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">MOBILE SCREEN WIDGET</span>
+          <h4 class="dialog-title">TrackFlow Widget</h4>
+        </div>
+        <button class="close-icon-btn" id="closeWidgetBtn" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Live Widget Preview Box -->
+      <div class="minimal-widget-box" id="phoneWidgetBox">
+        <div class="widget-balances-row">
+          <div class="w-acc-col">
+            <span class="w-acc-title">BOB</span>
+            <div class="w-acc-num" id="widgetBobBal">₹0</div>
+            <span class="w-acc-badge" id="widgetBobStatus">Normal</span>
+          </div>
+          <div class="w-acc-sep"></div>
+          <div class="w-acc-col">
+            <span class="w-acc-title">ICICI</span>
+            <div class="w-acc-num" id="widgetIciciBal">₹0</div>
+            <span class="w-acc-badge" id="widgetIciciStatus">Normal</span>
+          </div>
+        </div>
+
+        <div class="widget-bottom-meta">
+          <div>
+            <span class="w-meta-label">Top Category:</span>
+            <strong id="widgetTopCat" class="w-meta-val">None</strong>
+          </div>
+          <div>
+            <span class="w-meta-label">Left Month End:</span>
+            <strong id="widgetMonthLeft" class="w-meta-val sage-text">₹0</strong>
+          </div>
+        </div>
+
+        <div class="widget-alert-ribbon" id="widgetWarningStrip" style="display: none;">
+          <span class="ribbon-warning-icon">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          </span>
+          Low Balance Warning (&lt; ₹500)
+        </div>
+      </div>
+
+      <div class="widget-dialog-actions">
+        <button class="primary-sage-btn full-width-btn" id="widgetQuickSpendBtn">
+          + Record Expense
+        </button>
+      </div>
+      <p class="widget-hint-copy">
+        Add this application to your mobile home screen to have instant 1-tap offline access without keeping your laptop running!
+      </p>
+    </div>
+  </div>
+
+  <!-- ADD FUNDS / DEPOSIT MODAL -->
+  <div class="modal-backdrop" id="addFundsModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="dialog-top">
+        <h3 class="dialog-title">Deposit / Add Funds</h3>
+        <button class="close-icon-btn" id="closeAddFundsBtn">✕</button>
+      </div>
+      <form id="addFundsForm" class="sleek-form">
+        <div class="form-row-single">
+          <label for="fundAccount" class="field-label">DEPOSIT INTO ACCOUNT</label>
+          <select id="fundAccount" class="clean-select full-width-select" required>
+            <option value="BOB">BOB (Bank of Baroda)</option>
+            <option value="ICICI">ICICI (ICICI Bank)</option>
+          </select>
+        </div>
+        <div class="form-row-single">
+          <label for="fundAmount" class="field-label">AMOUNT (₹)</label>
+          <input type="number" id="fundAmount" class="clean-text-input" min="1" step="any" placeholder="e.g. 5000" required>
+        </div>
+        <div class="form-row-single">
+          <label for="fundNote" class="field-label">SOURCE / NOTE (OPTIONAL)</label>
+          <input type="text" id="fundNote" class="clean-text-input" placeholder="e.g. Salary, UPI Transfer, Cash">
+        </div>
+        <div class="dialog-actions-row">
+          <button type="button" class="secondary-outline-btn" id="cancelAddFundsBtn">Cancel</button>
+          <button type="submit" class="primary-sage-btn">Add to Balance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FIRST RUN WELCOME MODAL -->
+  <div class="modal-backdrop" id="welcomeModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">WELCOME</span>
+          <h3 class="dialog-title">Set Starting Balances</h3>
+        </div>
+      </div>
+      <p class="page-subline" style="margin-bottom: 16px;">
+        Enter your baseline starting amount for BOB and ICICI bank accounts:
+      </p>
+      <form id="welcomeForm" class="sleek-form">
+        <div class="form-row-single">
+          <label for="welcomeBob" class="field-label">BOB STARTING BALANCE (₹)</label>
+          <input type="number" id="welcomeBob" class="clean-text-input" min="0" step="any" placeholder="e.g. 5000" required>
+        </div>
+        <div class="form-row-single">
+          <label for="welcomeIcici" class="field-label">ICICI STARTING BALANCE (₹)</label>
+          <input type="number" id="welcomeIcici" class="clean-text-input" min="0" step="any" placeholder="e.g. 10000" required>
+        </div>
+        <div class="form-submit-row">
+          <button type="submit" class="primary-sage-btn full-width-btn">Initialize Ledger</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MOBILE OFFLINE & WIDGET SETUP GUIDE MODAL -->
+  <div class="modal-backdrop" id="mobileGuideModal" style="display: none;">
+    <div class="modal-dialog large-dialog">
+      <div class="dialog-top">
+        <h3 class="dialog-title">Mobile Screen & Offline Setup</h3>
+        <button class="close-icon-btn" id="closeMobileGuideBtn">✕</button>
+      </div>
+      <div class="guide-scrollable-body">
+        <div class="guide-callout-pill">
+          100% Offline • Zero Laptop Server Dependency • No Login Required
+        </div>
+
+        <h4 class="guide-step-heading">1. How to run on phone without laptop running</h4>
+        <p class="guide-step-body">
+          TrackFlow is a standalone Progressive Web App. All data stays saved directly inside your mobile phone storage.
+        </p>
+        <ul class="guide-bullets">
+          <li><strong>Free 1-Click Hosting:</strong> Host this folder on GitHub Pages, Netlify, or Vercel to get a private link (e.g. <code>https://mytracker.vercel.app</code>).</li>
+          <li><strong>Local WiFi:</strong> Open on your phone browser using local IP (e.g. <code>http://192.168.x.x:3000</code>).</li>
+          <li><strong>Direct File:</strong> You can also send the bundled <code>standalone.html</code> to your phone directly!</li>
+        </ul>
+
+        <h4 class="guide-step-heading">2. Add to Mobile Screen as App / Widget</h4>
+        <div class="device-steps-grid">
+          <div class="device-box">
+            <h5>Android (Chrome / Edge)</h5>
+            <ol>
+              <li>Tap the three dots (⋮) menu at top right.</li>
+              <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</li>
+              <li>A direct icon is added to your home screen!</li>
+              <li>Long-press the icon for quick expense shortcuts!</li>
+            </ol>
+          </div>
+          <div class="device-box">
+            <h5>iPhone (Safari)</h5>
+            <ol>
+              <li>Tap the Share icon (square with arrow) at bottom.</li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+              <li>Tap <strong>Add</strong> at top right.</li>
+              <li>Opens full-screen like a native iPhone app!</li>
+            </ol>
+          </div>
+        </div>
+
+        <h4 class="guide-step-heading">3. Fully Offline</h4>
+        <p class="guide-step-body">
+          Once installed to your phone, Service Worker caches all code. You can switch on Airplane Mode or turn off your computer — the app and all transactions work seamlessly offline.
+        </p>
+
+        <div class="dialog-actions-row">
+          <button type="button" class="primary-sage-btn full-width-btn" id="gotItGuideBtn">Understood, Thanks!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOB PARTNER NOTIFY MODAL (Instant Transaction Alert) -->
+  <div class="modal-backdrop" id="partnerNotifyModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">BOB PARTNER ALERT</span>
+          <h3 class="dialog-title" id="partnerModalTitle">Notify Partner</h3>
+        </div>
+        <button class="close-icon-btn" id="closePartnerNotifyBtn">✕</button>
+      </div>
+
+      <p class="page-subline" id="partnerModalSubline" style="margin-bottom: 14px;">
+        Share details of this BOB transaction with your partner:
+      </p>
+
+      <!-- Preformatted Message Preview -->
+      <div class="partner-notify-preview-box">
+        <div class="preview-row">
+          <span class="preview-label">Amount:</span>
+          <strong class="preview-val amount-val" id="notifyAmount">₹0.00</strong>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Spent For:</span>
+          <span class="preview-val" id="notifyDescription">-</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Paid To:</span>
+          <span class="preview-val" id="notifyToWhom">-</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Category:</span>
+          <span class="preview-val" id="notifyCategory">-</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Timestamp:</span>
+          <span class="preview-val" id="notifyTimestamp">-</span>
+        </div>
+        <div class="preview-divider"></div>
+        <div class="preview-row highlight-row">
+          <span class="preview-label">BOB Balance Remaining:</span>
+          <strong class="preview-val sage-text" id="notifyRemainingBal">₹0.00</strong>
+        </div>
+      </div>
+
+      <div class="partner-modal-actions">
+        <button type="button" class="primary-sage-btn full-width-btn" id="sendPartnerWhatsAppBtn">
+          <span class="btn-silhouette-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm0 18.06c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.04 8.04 0 0 1-1.24-4.29c0-4.48 3.65-8.13 8.13-8.13 2.17 0 4.21.85 5.75 2.38 1.53 1.54 2.38 3.58 2.38 5.75 0 4.49-3.65 8.15-8.13 8.15zm4.46-6.11c-.24-.12-1.45-.72-1.68-.8-.23-.08-.39-.12-.56.12-.17.24-.64.8-.79.96-.14.16-.29.18-.53.06-.24-.12-1.03-.38-1.96-1.21-.73-.65-1.22-1.45-1.36-1.7-.14-.24-.01-.37.11-.49.11-.11.24-.29.37-.43.12-.14.16-.24.24-.4.08-.16.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.16 0-.43.06-.65.3-.23.24-.86.84-.86 2.05 0 1.21.88 2.38 1 2.54.12.16 1.73 2.64 4.2 3.7.59.25 1.05.4 1.41.51.59.19 1.13.16 1.56.1.48-.07 1.45-.59 1.66-1.17.2-.57.2-1.07.14-1.17-.06-.1-.22-.16-.46-.28z"/></svg>
+          </span>
+          <span>Send via WhatsApp</span>
+        </button>
+        <button type="button" class="secondary-outline-btn full-width-btn" id="sharePartnerSysBtn">
+          <span>Share via SMS / Other Apps</span>
+        </button>
+        <button type="button" class="text-action-link" id="copyPartnerTextBtn" style="margin-top: 6px; text-align: center;">
+          Copy Update to Clipboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOB PARTNER STATEMENT & ACTIVITY MODAL -->
+  <div class="modal-backdrop" id="bobPartnerStatementModal" style="display: none;">
+    <div class="modal-dialog large-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">BANK OF BARODA</span>
+          <h3 class="dialog-title">BOB Partner Shared Statement</h3>
+        </div>
+        <button class="close-icon-btn" id="closeBobStatementBtn">✕</button>
+      </div>
+
+      <!-- Partner Header Stats -->
+      <div class="partner-statement-summary-bar">
+        <div class="stat-cell">
+          <span class="stat-cell-label">CURRENT BOB BALANCE</span>
+          <span class="stat-cell-num" id="bobPartnerCurBal">₹0.00</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">TOTAL SPENT FROM BOB</span>
+          <span class="stat-cell-num" id="bobPartnerTotalSpent">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Actions Strip -->
+      <div class="partner-statement-actions">
+        <button type="button" class="primary-sage-btn" id="shareMonthlyBobSummaryBtn">
+          Share Monthly BOB Statement
+        </button>
+        <button type="button" class="secondary-outline-btn" id="copyBobLedgerLinkBtn">
+          Copy Partner View Link
+        </button>
+      </div>
+
+      <!-- List of what was spent on what from BOB -->
+      <div class="partner-transactions-wrapper">
+        <h4 class="subgroup-title" style="margin: 14px 0 8px 0; font-size: 1rem;">Itemized BOB Spends (What was spent on what)</h4>
+        <div class="ledger-entry-list" id="bobPartnerTxList">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <div class="dialog-actions-row">
+        <button type="button" class="secondary-outline-btn full-width-btn" id="closeBobStatementBottomBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULATE / PARTNER DIRECT SPEND PORTAL MODAL -->
+  <div class="modal-backdrop" id="partnerSpendPortalModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">PARTNER EXPENSE PORTAL</span>
+          <h3 class="dialog-title" id="partnerPortalModalTitle">Partner Spends on BOB</h3>
+        </div>
+        <button class="close-icon-btn" id="closePartnerPortalBtn">✕</button>
+      </div>
+
+      <p class="page-subline" style="margin-bottom: 16px;">
+        Record an expense made by your partner on the BOB account. This generates an active reminder for you to reimburse them.
+      </p>
+
+      <form id="partnerPortalForm" class="sleek-form">
+        <div class="form-row-single">
+          <label for="portalAmount" class="field-label">AMOUNT SPENT (₹) *</label>
+          <input type="number" id="portalAmount" class="clean-text-input" min="0.01" step="any" placeholder="e.g. 450" required>
+        </div>
+
+        <div class="form-row-single">
+          <label for="portalDescription" class="field-label">FOR WHAT (PURPOSE) *</label>
+          <input type="text" id="portalDescription" class="clean-text-input" placeholder="e.g. Groceries, Medicines, Team dinner" required>
+        </div>
+
+        <div class="form-row-single">
+          <label for="portalToWhom" class="field-label">PAID TO (MERCHANT / SHOP) *</label>
+          <input type="text" id="portalToWhom" class="clean-text-input" placeholder="e.g. Reliance Fresh, Apollo Pharmacy" required>
+        </div>
+
+        <div class="form-row-single">
+          <label for="portalCategory" class="field-label">CATEGORY</label>
+          <select id="portalCategory" class="clean-select full-width-select">
+            <option value="Groceries">Groceries</option>
+            <option value="Food & Dining">Food & Dining</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Travel & Fuel">Travel & Fuel</option>
+            <option value="Bills & Utilities">Bills & Utilities</option>
+            <option value="Health & Medical">Health & Medical</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="dialog-actions-row">
+          <button type="button" class="secondary-outline-btn" id="cancelPartnerPortalBtn">Cancel</button>
+          <button type="submit" class="primary-sage-btn">Submit & Create Reminder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PARTNER SPEND NOTIFICATION ALERT MODAL -->
+  <div class="modal-backdrop" id="partnerSpendAlertModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="dialog-top">
+        <div class="dialog-headline-wrap">
+          <span class="dialog-eyebrow">BOB SPEND NOTIFICATION</span>
+          <h3 class="dialog-title">Partner Spent on BOB</h3>
+        </div>
+        <button class="close-icon-btn" id="closePartnerAlertBtn">✕</button>
+      </div>
+
+      <div class="partner-alert-banner-box">
+        <div class="alert-bell-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+        </div>
+        <div class="alert-message-content">
+          <span class="alert-headline" id="partnerAlertHeadline">You have a new settlement reminder!</span>
+          <p class="alert-subtext" id="partnerAlertBody">
+            You should send ₹0.00 for purpose to your partner.
+          </p>
+        </div>
+      </div>
+
+      <div class="partner-notify-preview-box" style="margin-bottom: 16px;">
+        <div class="preview-row">
+          <span class="preview-label">Amount:</span>
+          <strong class="preview-val amount-val" id="alertAmount">₹0.00</strong>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">For Purpose:</span>
+          <span class="preview-val" id="alertDescription">-</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Paid To:</span>
+          <span class="preview-val" id="alertToWhom">-</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Partner:</span>
+          <span class="preview-val" id="alertPartnerName">Partner</span>
+        </div>
+        <div class="preview-divider"></div>
+        <div class="preview-row highlight-row">
+          <span class="preview-label">Current BOB Balance:</span>
+          <strong class="preview-val" id="alertBobCurBal">₹0.00</strong>
+        </div>
+      </div>
+
+      <div class="partner-modal-actions">
+        <button type="button" class="primary-sage-btn full-width-btn" id="alertMarkPaidBtn">
+          ✓ I Paid (Deduct from BOB Balance)
+        </button>
+        <button type="button" class="secondary-outline-btn full-width-btn" id="alertRemindLaterBtn">
+          Keep Reminder on Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION STACK -->
+  <div class="toast-stack" id="toastContainer"></div>
+
+  <!-- Hidden container for Print / PDF report (populated by JS, shown only during window.print) -->
+  <div id="printReportContainer"></div>
+
+  <script src="cloudSync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

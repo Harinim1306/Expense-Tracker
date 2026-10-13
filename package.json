@@ -1,0 +1,17 @@
+{
+  "name": "expense-tracker-trackflow",
+  "version": "2.1.0",
+  "description": "Dual-partner shared BOB ledger with private vaults, mobile auth, cloud sync, and recurring reminders.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "node build-standalone.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["expense-tracker", "pwa", "offline", "bob", "icici", "shared-ledger", "netlify"],
+  "author": "Harini",
+  "license": "MIT"
+}

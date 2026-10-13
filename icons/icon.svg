@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A6B53" />
+      <stop offset="100%" stop-color="#354E3C" />
+    </linearGradient>
+  </defs>
+
+  <!-- Cream White Base Rounded Rectangle -->
+  <rect width="512" height="512" rx="128" fill="#F8F6F0" />
+  <rect width="504" height="504" x="4" y="4" rx="124" fill="none" stroke="#E3DED4" stroke-width="4" />
+
+  <!-- Sage Green Crest Shield -->
+  <rect x="76" y="80" width="360" height="352" rx="40" fill="url(#sageGrad)" />
+
+  <!-- Center Rupee Symbol in Cream White -->
+  <g fill="#F8F6F0" transform="translate(256, 210) scale(1.4)">
+    <text font-family="-apple-system, BlinkMacSystemFont, 'Newsreader', Georgia, serif" font-weight="700" font-size="96" text-anchor="middle" dominant-baseline="central" fill="#F8F6F0">₹</text>
+  </g>
+
+  <!-- BOB & ICICI Subtle Pills -->
+  <g transform="translate(136, 335)">
+    <rect width="100" height="34" rx="8" fill="#F8F6F0" opacity="0.9" />
+    <text x="50" y="22" font-family="sans-serif" font-weight="800" font-size="14" text-anchor="middle" fill="#C2410C">BOB</text>
+  </g>
+  <g transform="translate(276, 335)">
+    <rect width="100" height="34" rx="8" fill="#F8F6F0" opacity="0.9" />
+    <text x="50" y="22" font-family="sans-serif" font-weight="800" font-size="14" text-anchor="middle" fill="#6D28D9">ICICI</text>
+  </g>
+</svg>

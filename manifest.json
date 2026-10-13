@@ -1,0 +1,55 @@
+{
+  "name": "TrackFlow - BOB & ICICI Expense Ledger",
+  "short_name": "TrackFlow",
+  "description": "Offline personal expense ledger for BOB & ICICI accounts with live timestamps, low balance alerts, and monthly category insights.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F8F6F0",
+  "theme_color": "#F8F6F0",
+  "orientation": "portrait",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Record",
+      "short_name": "+ Expense",
+      "description": "Record transaction with live timestamp",
+      "url": "./index.html?action=add",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Monthly Ledger",
+      "short_name": "Monthly",
+      "description": "View monthly category insights and balance",
+      "url": "./index.html?tab=analytics",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Widget Mode",
+      "short_name": "Widget",
+      "description": "Compact phone widget view",
+      "url": "./index.html?mode=widget",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
