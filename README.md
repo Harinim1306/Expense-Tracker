@@ -75,7 +75,7 @@ You can deploy this folder to **GitHub Pages**, **Netlify Drop** (drag & drop), 
 4. **Done!** The app is now installed on your phone. You can turn off your laptop, turn off Wi-Fi/Mobile Data, and open TrackFlow directly from your mobile home screen anytime.
 
 ### Method 2: Transfer `standalone.html` Directly
-Send [standalone.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/standalone.html) to your phone via WhatsApp, Email, or Bluetooth and open it in Chrome/Safari.
+Send [standalone.html](standalone.html) to your phone via WhatsApp, Email, or Bluetooth and open it in Chrome/Safari.
 
 ---
 
@@ -101,4 +101,4 @@ The server refuses login when the account passwords are not configured. Existing
   node server.js
   ```
   Open `http://localhost:3000` in any browser.
-- Or simply open [index.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/index.html) or [standalone.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/standalone.html) directly!
+- Or simply open [index.html](index.html) or [standalone.html](standalone.html) directly!
