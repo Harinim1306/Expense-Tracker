@@ -37,7 +37,7 @@ if (!fs.existsSync(DATA_DIR)) {
 // User identities and passwords are deployment configuration, not source-code constants.
 const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
 const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
-const SHARED_PASSWORD = process.env.TRACKFLOW_PASSWORD || '';
+const SHARED_PASSWORD = (process.env.TRACKFLOW_PASSWORD || '').trim();
 const PRIMARY_PASSWORD = SHARED_PASSWORD;
 const PARTNER_PASSWORD = SHARED_PASSWORD;
 const AUTHORIZED_NUMBERS = Object.fromEntries([
