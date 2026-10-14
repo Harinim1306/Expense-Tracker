@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
 const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
-const SHARED_PASSWORD = process.env.TRACKFLOW_PASSWORD || '';
+const SHARED_PASSWORD = (process.env.TRACKFLOW_PASSWORD || '').trim();
 const TOKEN_SECRET = process.env.TRACKFLOW_TOKEN_SECRET || process.env.TRACKFLOW_PASSWORD || '';
 const ALLOWED_ORIGIN = process.env.TRACKFLOW_ALLOWED_ORIGIN || '';
 const AUTHORIZED_NUMBERS = Object.fromEntries([
