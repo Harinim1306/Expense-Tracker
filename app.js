@@ -1447,18 +1447,16 @@ function generateBobNotifyText(tx, customRemainingBal) {
 }
 
 function sendToWhatsApp(text) {
+  // Use the full international WhatsApp number supplied by the Netlify function.
   const cleanPhone = (state.partner.phone || '').replace(/[^0-9]/g, '');
-  let url = 'https://api.whatsapp.com/send?';
-  if (cleanPhone) {
-    url += `phone=${cleanPhone}&`;
+  if (!cleanPhone) {
+    showToast('Partner WhatsApp number is missing. Set TRACKFLOW_PARTNER_WHATSAPP_PHONE in Netlify.');
+    return;
   }
-  url += `text=${encodeURIComponent(text)}`;
-
+  const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   const win = window.open(url, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined') {
-    window.location.href = url;
-  }
-  showToast('WhatsApp opened automatically to notify partner!');
+  if (!win) window.location.href = url;
+  showToast('WhatsApp opened with the message ready to send.');
 }
 
 function shareViaSystem(text, title = 'BOB Spend Update') {
