@@ -83,7 +83,9 @@ Send [standalone.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tra
 
 The server now requires deployment environment variables for authentication. Do not commit real phone numbers or passwords to this repository.
 
-Set these variables in your hosting provider or local environment before starting the server:
+For local development, the server reads a root-level `.env` file automatically (without overriding variables already set by the host). For production, configure the same values in your hosting provider's environment settings. The `.env` file is ignored by Git; never commit it.
+
+Set these variables in `.env` or your hosting provider before starting the server:
 
 - `TRACKFLOW_PRIMARY_PHONE`: primary user's 10-digit phone number
 - `TRACKFLOW_PARTNER_PHONE`: partner user's 10-digit phone number
