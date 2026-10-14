@@ -223,7 +223,7 @@ const server = http.createServer(async (req, res) => {
       if (!authConfig) {
         sendJson(res, 401, {
           success: false,
-          error: 'Access restricted. Only authorized partner mobile numbers (7418753113 or 9384931363) can enter.'
+          error: 'Access restricted. This account is not authorized.'
         });
         return;
       }
