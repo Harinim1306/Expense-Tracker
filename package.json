@@ -20,7 +20,6 @@
     "shared-ledger",
     "netlify"
   ],
-  "author": "Harini",
   "license": "MIT",
   "dependencies": {
     "@netlify/blobs": "^10.7.13"
