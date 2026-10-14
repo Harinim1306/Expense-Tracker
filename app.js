@@ -415,7 +415,8 @@ async function performCloudSync() {
       }
 
       // 3. Partner profile
-      if (pullResult.partnerProfile && !hasPendingPartnerSettings()) {
+      if (pullResult.partnerProfile) {
+        // Server environment variables are the source of truth for partner contact settings.
         state.partner = { ...state.partner, ...pullResult.partnerProfile };
       }
 
@@ -846,6 +847,12 @@ function renderPartnerSettings() {
   if (phoneInput) phoneInput.value = state.partner.phone || '';
   if (upiInput) upiInput.value = state.partner.upiId || '';
   if (autoCheckbox) autoCheckbox.checked = state.partner.autoNotifyBob !== false;
+
+  // Contact settings are controlled by Netlify environment variables, not per-device edits.
+  [nameInput, phoneInput, upiInput].forEach((input) => { if (input) input.readOnly = true; });
+  if (autoCheckbox) autoCheckbox.disabled = true;
+  const saveButton = document.querySelector('#partnerSettingsForm button[type="submit"]');
+  if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Managed by deployment settings'; }
 }
 
 function renderNotificationSettings() {
@@ -1729,15 +1736,7 @@ function setupEventListeners() {
   // Partner Settings Form
   document.getElementById('partnerSettingsForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    state.partner.name = document.getElementById('partnerNameInput').value.trim() || 'Partner';
-    state.partner.phone = document.getElementById('partnerPhoneInput').value.trim() || '';
-    state.partner.upiId = document.getElementById('partnerUpiInput').value.trim() || '';
-    state.partner.autoNotifyBob = document.getElementById('autoNotifyBobCheckbox').checked;
-    // Protect these edits from being overwritten by the next pull of older cloud settings.
-    localStorage.setItem(PARTNER_SETTINGS_PENDING_KEY, '1');
-    saveData();
-    renderAll();
-    showToast(`Partner settings for ${state.partner.name} saved!`);
+    showToast('Partner contact settings are managed by Netlify environment variables.');
   });
 
   // Partner Quick Request Link & WhatsApp invite
