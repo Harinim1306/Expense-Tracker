@@ -92,7 +92,14 @@ const CloudSync = (() => {
   }
 
   function logout() {
+    const session = getSession();
     clearSession();
+    if (session?.token) {
+      fetch(apiUrl('/auth/logout'), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.token}` }
+      }).catch(() => {});
+    }
   }
 
   // -------------------------------------------------------------------------
