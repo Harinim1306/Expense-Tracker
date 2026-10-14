@@ -9,7 +9,7 @@ const CloudSync = (() => {
   // -------------------------------------------------------------------------
   // Config
   // -------------------------------------------------------------------------
-  const AUTHORIZED_NUMBERS = ['7418753113', '9384931363'];
+  const AUTHORIZED_NUMBERS = []; // Server validates identity and permissions.
   const SESSION_KEY = 'trackflow_session_v1';
 
   // Detect API base: Netlify Functions or local server
@@ -36,6 +36,7 @@ const CloudSync = (() => {
       role: user.role,
       accounts: user.accounts,
       partnerPhone: user.partnerPhone,
+      token: user.token || null,
       loginTime: Date.now()
     }));
   }
@@ -68,12 +69,7 @@ const CloudSync = (() => {
   async function login(phone, password) {
     const cleanPhone = normalizePhone(phone);
 
-    if (!AUTHORIZED_NUMBERS.includes(cleanPhone)) {
-      return {
-        success: false,
-        error: 'Access restricted. Only authorized partner numbers can sign in.'
-      };
-    }
+    if (!cleanPhone || !password) return { success: false, error: 'Enter your phone number and password.' };
 
     try {
       const res = await fetch(apiUrl('/auth/login'), {
@@ -84,26 +80,12 @@ const CloudSync = (() => {
       const data = await res.json();
 
       if (data.success) {
-        saveSession(data.user);
+        saveSession({ ...data.user, token: data.token });
       }
       return data;
     } catch (err) {
-      // If network is offline or server not available, allow offline mode
-      // by validating against hardcoded allowed numbers + default password
-      if (AUTHORIZED_NUMBERS.includes(cleanPhone) &&
-          (password === 'trackflow2026' || password.length >= 4)) {
-        // Offline fallback – allow access with a basic session
-        const fallbackUser = {
-          phone: cleanPhone,
-          name: cleanPhone === '7418753113' ? 'Harini' : 'Partner',
-          role: cleanPhone === '7418753113' ? 'primary' : 'partner',
-          accounts: cleanPhone === '7418753113' ? ['BOB', 'ICICI'] : ['BOB', 'Personal'],
-          partnerPhone: cleanPhone === '7418753113' ? '9384931363' : '7418753113'
-        };
-        saveSession(fallbackUser);
-        return { success: true, user: fallbackUser, offline: true };
-      }
-      return { success: false, error: 'Server unavailable. Check your connection.' };
+      // Never create a session when the server cannot verify credentials.
+      return { success: false, error: 'Server unavailable. Connect and try again.' };
     }
   }
 
@@ -115,11 +97,12 @@ const CloudSync = (() => {
   // Sync – Pull latest cloud data (GET /api/sync/pull?phone=...)
   // -------------------------------------------------------------------------
   async function pullFromCloud(phone) {
-    const cleanPhone = normalizePhone(phone);
+    const session = getSession();
+    if (!session?.token) return { success: false, error: 'Please sign in again.' };
     try {
-      const res = await fetch(apiUrl(`/sync/pull?phone=${cleanPhone}`), {
+      const res = await fetch(apiUrl('/sync/pull'), {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` }
       });
       const data = await res.json();
       return data;
@@ -133,13 +116,13 @@ const CloudSync = (() => {
   // Sync – Push local data to cloud (POST /api/sync/push)
   // -------------------------------------------------------------------------
   async function pushToCloud(phone, bobData, privateData, partnerProfile) {
-    const cleanPhone = normalizePhone(phone);
+    const session = getSession();
+    if (!session?.token) return { success: false, error: 'Please sign in again.' };
     try {
       const res = await fetch(apiUrl('/sync/push'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
         body: JSON.stringify({
-          phone: cleanPhone,
           bob: bobData,
           private: privateData,
           partnerProfile
@@ -157,12 +140,13 @@ const CloudSync = (() => {
   // Add private account (POST /api/accounts/add)
   // -------------------------------------------------------------------------
   async function addPrivateAccount(phone, accountName, initialBalance) {
-    const cleanPhone = normalizePhone(phone);
+    const session = getSession();
+    if (!session?.token) return { success: false, error: 'Please sign in again.' };
     try {
       const res = await fetch(apiUrl('/accounts/add'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, accountName, initialBalance })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+        body: JSON.stringify({ accountName, initialBalance })
       });
       return await res.json();
     } catch (err) {
@@ -175,12 +159,12 @@ const CloudSync = (() => {
   // -------------------------------------------------------------------------
   function isPrimary() {
     const session = getSession();
-    return session && session.phone === '7418753113';
+    return session && session.role === 'primary';
   }
 
   function isPartner() {
     const session = getSession();
-    return session && session.phone === '9384931363';
+    return session && session.role === 'partner';
   }
 
   function getUserPhone() {
