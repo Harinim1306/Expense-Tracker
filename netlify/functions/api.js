@@ -54,7 +54,8 @@ async function getStoreData(event) {
       memoryDb = { ...memoryDb, ...blob };
     }
   } catch (err) {
-    // Netlify Blobs package not installed or local test; fallback to memoryDb
+    // Local tests can use memory. In deployed Netlify, never pretend volatile memory is durable storage.
+    if (process.env.NETLIFY === 'true') throw err;
   }
   return memoryDb;
 }
@@ -68,7 +69,8 @@ async function setStoreData(data, event) {
     const store = getStore('trackflow_ledger');
     await store.setJSON('db_state', data);
   } catch (err) {
-    // Fallback
+    // Local tests can use memory. In deployed Netlify, report failed persistence instead of false success.
+    if (process.env.NETLIFY === 'true') throw err;
   }
 }
 
