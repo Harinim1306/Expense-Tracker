@@ -266,7 +266,7 @@ function applyUserRoleUI() {
   if (vaultTitle) vaultTitle.textContent = CloudSync.isPrimary() ? 'My ICICI Account' : 'My Private Vault';
   if (vaultSub) vaultSub.textContent = CloudSync.isPrimary()
     ? 'Your ICICI account data is private and never visible to your partner.'
-    : 'Your private accounts are only visible to you — never shared with Harini.';
+    : 'Your private accounts are only visible to you — never shared with your partner.';
 }
 
 // ==========================================================================
