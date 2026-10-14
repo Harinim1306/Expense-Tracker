@@ -712,27 +712,27 @@
                 <div class="settings-input-grid">
                   <div class="form-row-single">
                     <label for="partnerNameInput" class="field-label">PARTNER NAME *</label>
-                    <input type="text" id="partnerNameInput" class="clean-text-input" placeholder="e.g. Priya, Alex, Rahul" required>
+                    <input type="text" id="partnerNameInput" class="clean-text-input" placeholder="Managed by deployment settings" readonly required>
                   </div>
                   <div class="form-row-single">
                     <label for="partnerPhoneInput" class="field-label">WHATSAPP / PHONE (OPTIONAL)</label>
-                    <input type="tel" id="partnerPhoneInput" class="clean-text-input" placeholder="e.g. 9876543210">
+                    <input type="tel" id="partnerPhoneInput" class="clean-text-input" placeholder="Managed by deployment settings" readonly>
                   </div>
                   <div class="form-row-single">
                     <label for="partnerUpiInput" class="field-label">PARTNER UPI ID (FOR 1-TAP PAY)</label>
-                    <input type="text" id="partnerUpiInput" class="clean-text-input" placeholder="e.g. partner@okhdfcbank or phone@upi">
+                    <input type="text" id="partnerUpiInput" class="clean-text-input" placeholder="Managed by deployment settings" readonly>
                   </div>
                 </div>
 
                 <div class="form-row-single" style="margin-bottom: 12px;">
                   <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
                     <input type="checkbox" id="autoNotifyBobCheckbox" checked style="accent-color: var(--sage-primary);">
-                    <span>Automatically send notifications in WhatsApp directly when BOB transactions or settlements occur</span>
+                    <span>Open WhatsApp with a prepared notification when BOB transactions occur (tap Send in WhatsApp)</span>
                   </label>
                 </div>
 
                 <div class="settings-action-btns-group">
-                  <button type="submit" class="primary-sage-btn">Save Partner Settings</button>
+                  <button type="submit" class="primary-sage-btn" disabled>Managed by deployment settings</button>
                   <button type="button" class="secondary-outline-btn" id="copyPartnerSpendLinkBtn">Copy Partner Request Link</button>
                   <button type="button" class="secondary-outline-btn" id="sendPartnerPairWhatsAppBtn">Send Pair Link via WhatsApp</button>
                 </div>
