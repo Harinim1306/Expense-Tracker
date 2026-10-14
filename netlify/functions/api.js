@@ -1,30 +1,19 @@
 // Netlify Serverless Function for TrackFlow Cloud Backend
 // Provides Authentication, Role-based Account Separation, and Cross-Device Sync
 
-const AUTHORIZED_NUMBERS = {
-  '7418753113': {
-    role: 'primary',
-    name: 'Harini',
-    partnerPhone: '9384931363',
-    defaultAccounts: ['BOB', 'ICICI']
-  },
-  '9384931363': {
-    role: 'partner',
-    name: 'Partner',
-    partnerPhone: '7418753113',
-    defaultAccounts: ['BOB', 'Personal']
-  }
-};
-
-const DEFAULT_PASSWORD = process.env.TRACKFLOW_PASSWORD || 'trackflow2026';
+const crypto = require('crypto');
+const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
+const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
+const SHARED_PASSWORD = process.env.TRACKFLOW_PASSWORD || '';
+const TOKEN_SECRET = process.env.TRACKFLOW_TOKEN_SECRET || process.env.TRACKFLOW_PASSWORD || '';
+const ALLOWED_ORIGIN = process.env.TRACKFLOW_ALLOWED_ORIGIN || '';
+const AUTHORIZED_NUMBERS = Object.fromEntries([
+  [PRIMARY_PHONE, { role: 'primary', name: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary', partnerPhone: PARTNER_PHONE, defaultAccounts: ['BOB', 'ICICI'] }],
+  [PARTNER_PHONE, { role: 'partner', name: process.env.TRACKFLOW_PARTNER_NAME || 'Partner', partnerPhone: PRIMARY_PHONE, defaultAccounts: ['BOB', 'Personal'] }]
+].filter(([phone]) => phone));
 
 // In-memory cache fallback for serverless container runtime
 let memoryDb = {
-  passwords: {
-    master: DEFAULT_PASSWORD,
-    '7418753113': DEFAULT_PASSWORD,
-    '9384931363': DEFAULT_PASSWORD
-  },
   bobAccount: {
     initialBalance: 5000,
     transactions: [
@@ -42,21 +31,13 @@ let memoryDb = {
     reminders: []
   },
   privateAccounts: {
-    '7418753113': {
-      accounts: ['ICICI'],
-      initialBalances: { ICICI: 10000 },
-      transactions: []
-    },
-    '9384931363': {
-      accounts: ['Personal'],
-      initialBalances: { Personal: 5000 },
-      transactions: []
-    }
+    [PRIMARY_PHONE]: { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] },
+    [PARTNER_PHONE]: { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] }
   },
   partnerProfile: {
-    primaryName: 'Harini',
-    partnerName: 'Partner',
-    partnerPhone: '9384931363',
+    primaryName: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary',
+    partnerName: process.env.TRACKFLOW_PARTNER_NAME || 'Partner',
+    partnerPhone: PARTNER_PHONE,
     partnerUpi: '',
     autoNotifyBob: true
   },
@@ -94,9 +75,33 @@ function normalizePhone(phone) {
   if (!phone) return '';
   return String(phone).replace(/[^0-9]/g, '').slice(-10);
 }
+function signToken(payload) {
+  if (!TOKEN_SECRET) throw new Error('TRACKFLOW_TOKEN_SECRET or TRACKFLOW_PASSWORD must be configured.');
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', TOKEN_SECRET).update(encoded).digest('base64url');
+  return encoded + '.' + signature;
+}
+function readToken(event) {
+  const match = /^Bearer (.+)$/.exec(event.headers?.authorization || event.headers?.Authorization || '');
+  if (!match || !TOKEN_SECRET) return null;
+  const [encoded, signature] = match[1].split('.');
+  if (!encoded || !signature) return null;
+  const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(encoded).digest();
+  let actual;
+  try { actual = Buffer.from(signature, 'base64url'); } catch { return null; }
+  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!payload.phone || !AUTHORIZED_NUMBERS[payload.phone] || !Number.isFinite(payload.exp) || payload.exp <= Date.now()) return null;
+    return payload;
+  } catch { return null; }
+}
+function jsonResponse(statusCode, data) {
+  return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(data) };
+}
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  ...(ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': ALLOWED_ORIGIN, 'Vary': 'Origin' } : {}),
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json'
@@ -138,13 +143,15 @@ exports.handler = async (event, context) => {
           headers: CORS_HEADERS,
           body: JSON.stringify({
             success: false,
-            error: 'Access restricted. Only authorized partner numbers (7418753113 or 9384931363) can enter.'
+            error: 'This account is not authorized.'
           })
         };
       }
 
-      const expectedPassword = db.passwords[cleanPhone] || db.passwords.master || DEFAULT_PASSWORD;
-      if (password !== expectedPassword && password !== DEFAULT_PASSWORD) {
+      if (!SHARED_PASSWORD || !TOKEN_SECRET) {
+        return jsonResponse(503, { success: false, error: 'Authentication is not configured on the server.' });
+      }
+      if (typeof password !== 'string' || password !== SHARED_PASSWORD) {
         return {
           statusCode: 401,
           headers: CORS_HEADERS,
@@ -155,30 +162,22 @@ exports.handler = async (event, context) => {
         };
       }
 
-      const userAccounts = cleanPhone === '7418753113'
+      const userAccounts = cleanPhone === PRIMARY_PHONE
         ? ['BOB', 'ICICI']
         : ['BOB', ...(db.privateAccounts[cleanPhone]?.accounts || ['Personal'])];
 
-      return {
-        statusCode: 200,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({
-          success: true,
-          user: {
-            phone: cleanPhone,
-            role: authConfig.role,
-            name: authConfig.name,
-            partnerPhone: authConfig.partnerPhone,
-            accounts: userAccounts
-          },
-          token: 'tf_' + cleanPhone + '_' + Date.now()
-        })
-      };
+      return jsonResponse(200, {
+        success: true,
+        user: { phone: cleanPhone, role: authConfig.role, name: authConfig.name, partnerPhone: authConfig.partnerPhone, accounts: userAccounts },
+        token: signToken({ phone: cleanPhone, role: authConfig.role, iat: Date.now(), exp: Date.now() + 12 * 60 * 60 * 1000 })
+      });
     }
 
     // 3. Sync Pull
     if (path === '/sync/pull' && event.httpMethod === 'GET') {
-      const phone = normalizePhone(params.phone);
+      const session = readToken(event);
+      if (!session) return jsonResponse(401, { success: false, error: 'Authentication required.' });
+      const phone = session.phone;
       if (!AUTHORIZED_NUMBERS[phone]) {
         return {
           statusCode: 403,
@@ -194,15 +193,15 @@ exports.handler = async (event, context) => {
       };
 
       let privateData = { accounts: [], initialBalances: {}, transactions: [] };
-      if (phone === '7418753113') {
-        const pStore = db.privateAccounts['7418753113'] || { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] };
+      if (phone === PRIMARY_PHONE) {
+        const pStore = db.privateAccounts[PRIMARY_PHONE] || { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] };
         privateData = {
           accounts: pStore.accounts || ['ICICI'],
           initialBalances: pStore.initialBalances || { ICICI: 10000 },
           transactions: pStore.transactions || []
         };
-      } else if (phone === '9384931363') {
-        const pStore = db.privateAccounts['9384931363'] || { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] };
+      } else if (phone === PARTNER_PHONE) {
+        const pStore = db.privateAccounts[PARTNER_PHONE] || { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] };
         privateData = {
           accounts: pStore.accounts || ['Personal'],
           initialBalances: pStore.initialBalances || { Personal: 5000 },
@@ -226,8 +225,10 @@ exports.handler = async (event, context) => {
 
     // 4. Sync Push
     if (path === '/sync/push' && event.httpMethod === 'POST') {
+      const session = readToken(event);
+      if (!session) return jsonResponse(401, { success: false, error: 'Authentication required.' });
       const payload = JSON.parse(event.body || '{}');
-      const phone = normalizePhone(payload.phone);
+      const phone = session.phone;
       if (!AUTHORIZED_NUMBERS[phone]) {
         return {
           statusCode: 403,
@@ -291,8 +292,10 @@ exports.handler = async (event, context) => {
 
     // 5. Account Add (for Partner adding private account)
     if (path === '/accounts/add' && event.httpMethod === 'POST') {
-      const { phone, accountName, initialBalance } = JSON.parse(event.body || '{}');
-      const cleanPhone = normalizePhone(phone);
+      const session = readToken(event);
+      if (!session) return jsonResponse(401, { success: false, error: 'Authentication required.' });
+      const { accountName, initialBalance } = JSON.parse(event.body || '{}');
+      const cleanPhone = session.phone;
       if (!AUTHORIZED_NUMBERS[cleanPhone]) {
         return {
           statusCode: 403,
@@ -302,7 +305,7 @@ exports.handler = async (event, context) => {
       }
 
       const accName = (accountName || '').trim();
-      if (!accName || accName.toUpperCase() === 'BOB' || (accName.toUpperCase() === 'ICICI' && cleanPhone !== '7418753113')) {
+      if (!accName || accName.toUpperCase() === 'BOB' || (accName.toUpperCase() === 'ICICI' && cleanPhone !== PRIMARY_PHONE)) {
         return {
           statusCode: 400,
           headers: CORS_HEADERS,
