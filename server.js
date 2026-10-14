@@ -45,20 +45,8 @@ function getDefaultDb() {
     },
     // Private Accounts strictly segregated by phone number
     privateAccounts: {
-      PRIMARY_PHONE: {
-        accounts: ['ICICI'],
-        initialBalances: {
-          ICICI: 10000
-        },
-        transactions: []
-      },
-      PARTNER_PHONE: {
-        accounts: ['Personal'],
-        initialBalances: {
-          Personal: 5000
-        },
-        transactions: []
-      }
+      [PRIMARY_PHONE]: { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] },
+      [PARTNER_PHONE]: { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] }
     },
     partnerProfile: {
       primaryName: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary',
