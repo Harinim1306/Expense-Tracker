@@ -77,6 +77,15 @@ async function setStoreData(data, event) {
   }
 }
 
+function getStaticPartnerProfile() {
+  return {
+    name: PARTNER_NAME,
+    phone: PARTNER_PHONE,
+    upiId: PARTNER_UPI_ID,
+    autoNotifyBob: AUTO_NOTIFY_BOB
+  };
+}
+
 function normalizePhone(phone) {
   if (!phone) return '';
   return String(phone).replace(/[^0-9]/g, '').slice(-10);
