@@ -103,3 +103,15 @@ The server refuses login when the account passwords are not configured. Existing
   ```
   Open `http://localhost:3000` in any browser.
 - Or simply open [index.html](index.html) or [standalone.html](standalone.html) directly!
+
+
+## Netlify environment variables for partner details
+
+Set these in **Netlify → Site configuration → Environment variables**, then redeploy:
+
+- `TRACKFLOW_PARTNER_NAME` — partner display name
+- `TRACKFLOW_PARTNER_PHONE` — partner WhatsApp number with country code digits (India: `91` + 10-digit number; no `+` required)
+- `TRACKFLOW_PARTNER_UPI_ID` — partner UPI ID (optional)
+- `TRACKFLOW_AUTO_NOTIFY_BOB` — `true` or `false` to enable/disable opening a WhatsApp notification when a BOB expense is recorded
+
+These values are served by the Netlify function and are read-only in the app. Do not put these secrets or environment values in frontend JavaScript. The app can open a pre-filled WhatsApp message, but WhatsApp requires the user to tap **Send**; unattended automatic delivery requires the official WhatsApp Business Cloud API and its credentials/approved messaging setup.
