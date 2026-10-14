@@ -262,6 +262,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Auth: Revoke the current server-side session on logout.
+  if (reqPath === '/api/auth/logout' && req.method === 'POST') {
+    const match = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+    if (match) sessions.delete(match[1]);
+    sendJson(res, 200, { success: true });
+    return;
+  }
+
   // Auth: Change Password
   if (reqPath === '/api/auth/change-password' && req.method === 'POST') {
     try {
@@ -274,8 +282,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (!newPassword || newPassword.length < 4) {
-        sendJson(res, 400, { success: false, error: 'Password must be at least 4 characters long' });
+      if (typeof newPassword !== 'string' || newPassword.length < 12) {
+        sendJson(res, 400, { success: false, error: 'Password must be at least 12 characters long.' });
         return;
       }
 
