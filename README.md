@@ -110,7 +110,8 @@ The server refuses login when the account passwords are not configured. Existing
 Set these in **Netlify → Site configuration → Environment variables**, then redeploy:
 
 - `TRACKFLOW_PARTNER_NAME` — partner display name
-- `TRACKFLOW_PARTNER_PHONE` — partner WhatsApp number with country code digits (India: `91` + 10-digit number; no `+` required)
+- `TRACKFLOW_PARTNER_PHONE` — partner login phone (10 digits for India)
+- `TRACKFLOW_PARTNER_WHATSAPP_PHONE` — partner WhatsApp number with country code (India: `91` + 10-digit number; no `+` required). If omitted, the app prefixes `91` when `TRACKFLOW_PARTNER_PHONE` contains 10 digits.
 - `TRACKFLOW_PARTNER_UPI_ID` — partner UPI ID (optional)
 - `TRACKFLOW_AUTO_NOTIFY_BOB` — `true` or `false` to enable/disable opening a WhatsApp notification when a BOB expense is recorded
 
