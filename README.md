@@ -79,6 +79,20 @@ Send [standalone.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tra
 
 ---
 
+## Security configuration required
+
+The server now requires deployment environment variables for authentication. Do not commit real phone numbers or passwords to this repository.
+
+Set these variables in your hosting provider or local environment before starting the server:
+
+- `TRACKFLOW_PRIMARY_PHONE`: primary user's 10-digit phone number
+- `TRACKFLOW_PARTNER_PHONE`: partner user's 10-digit phone number
+- `TRACKFLOW_PRIMARY_PASSWORD`: a strong, unique password for the primary user
+- `TRACKFLOW_PARTNER_PASSWORD`: a strong, unique password for the partner
+- `TRACKFLOW_ALLOWED_ORIGIN`: exact browser origin of the deployed frontend (for example, `https://your-app.example`); leave unset only when frontend and API are same-origin
+
+The server refuses login when the account passwords are not configured. Existing client-only sessions are no longer accepted. After deploying this change, configure the environment variables and sign in again on every device. Rotate any credentials that were previously committed to source control. The server stores newly changed passwords as salted scrypt hashes.
+
 ## 💻 Running on Laptop
 
 - **Quick Start**:
