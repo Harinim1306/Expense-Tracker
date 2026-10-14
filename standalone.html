@@ -5076,6 +5076,12 @@ function setupAuthListeners() {
 // ==========================================================================
 let isCloudSyncing = false;
 let autoSyncTimer = null;
+const PARTNER_SETTINGS_PENDING_KEY = 'trackflow_partner_settings_pending_v1';
+
+function hasPendingPartnerSettings() {
+  try { return localStorage.getItem(PARTNER_SETTINGS_PENDING_KEY) === '1'; }
+  catch { return false; }
+}
 
 function triggerAutoCloudSync() {
   if (isCloudSyncing) return;
@@ -5155,7 +5161,7 @@ async function performCloudSync() {
       }
 
       // 3. Partner profile
-      if (pullResult.partnerProfile) {
+      if (pullResult.partnerProfile && !hasPendingPartnerSettings()) {
         state.partner = { ...state.partner, ...pullResult.partnerProfile };
       }
 
@@ -5183,8 +5189,15 @@ async function performCloudSync() {
       privatePayload.transactions = state.transactions.filter(t => t.account === 'ICICI');
     }
 
-    await CloudSync.pushToCloud(phone, bobPayload, privatePayload, state.partner);
+    const pushResult = await CloudSync.pushToCloud(phone, bobPayload, privatePayload, state.partner);
+    if (!pushResult || pushResult.success !== true) {
+      throw new Error(pushResult?.error || 'Cloud save failed');
+    }
 
+    // Clear the pending marker only after the server confirms the save.
+    if (hasPendingPartnerSettings()) {
+      localStorage.removeItem(PARTNER_SETTINGS_PENDING_KEY);
+    }
     state.lastCloudSync = Date.now();
     setSyncStatus('Synced', 'ok');
     return { success: true };
@@ -6466,6 +6479,8 @@ function setupEventListeners() {
     state.partner.phone = document.getElementById('partnerPhoneInput').value.trim() || '';
     state.partner.upiId = document.getElementById('partnerUpiInput').value.trim() || '';
     state.partner.autoNotifyBob = document.getElementById('autoNotifyBobCheckbox').checked;
+    // Protect these edits from being overwritten by the next pull of older cloud settings.
+    localStorage.setItem(PARTNER_SETTINGS_PENDING_KEY, '1');
     saveData();
     renderAll();
     showToast(`Partner settings for ${state.partner.name} saved!`);
