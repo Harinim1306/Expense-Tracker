@@ -4,6 +4,8 @@
 const crypto = require('crypto');
 const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
 const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
+const RAW_PARTNER_WHATSAPP_PHONE = String(process.env.TRACKFLOW_PARTNER_WHATSAPP_PHONE || process.env.TRACKFLOW_PARTNER_PHONE || '').replace(/[^0-9]/g, '');
+const PARTNER_WHATSAPP_PHONE = process.env.TRACKFLOW_PARTNER_WHATSAPP_PHONE ? RAW_PARTNER_WHATSAPP_PHONE : (RAW_PARTNER_WHATSAPP_PHONE.length === 10 ? `91${RAW_PARTNER_WHATSAPP_PHONE}` : RAW_PARTNER_WHATSAPP_PHONE);
 const PARTNER_NAME = (process.env.TRACKFLOW_PARTNER_NAME || 'Partner').trim();
 const PARTNER_UPI_ID = (process.env.TRACKFLOW_PARTNER_UPI_ID || '').trim();
 const AUTO_NOTIFY_BOB = !['false', '0', 'no', 'off'].includes((process.env.TRACKFLOW_AUTO_NOTIFY_BOB || 'true').trim().toLowerCase());
@@ -80,7 +82,7 @@ async function setStoreData(data, event) {
 function getStaticPartnerProfile() {
   return {
     name: PARTNER_NAME,
-    phone: PARTNER_PHONE,
+    phone: PARTNER_WHATSAPP_PHONE,
     upiId: PARTNER_UPI_ID,
     autoNotifyBob: AUTO_NOTIFY_BOB
   };
