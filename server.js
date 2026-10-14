@@ -109,6 +109,7 @@ const MIME_TYPES = {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
+    ...(process.env.TRACKFLOW_ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': process.env.TRACKFLOW_ALLOWED_ORIGIN, 'Vary': 'Origin' } : {}),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
