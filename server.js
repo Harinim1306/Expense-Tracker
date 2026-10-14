@@ -12,32 +12,20 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Authorized mobile numbers
-const AUTHORIZED_NUMBERS = {
-  '7418753113': {
-    role: 'primary',
-    name: 'Harini',
-    partnerPhone: '9384931363',
-    defaultAccounts: ['BOB', 'ICICI']
-  },
-  '9384931363': {
-    role: 'partner',
-    name: 'Partner',
-    partnerPhone: '7418753113',
-    defaultAccounts: ['BOB', 'Personal']
-  }
-};
-
-const DEFAULT_PASSWORD = 'trackflow2026';
+// User identities and passwords are deployment configuration, not source-code constants.
+const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
+const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
+const PRIMARY_PASSWORD = process.env.TRACKFLOW_PRIMARY_PASSWORD || '';
+const PARTNER_PASSWORD = process.env.TRACKFLOW_PARTNER_PASSWORD || '';
+const AUTHORIZED_NUMBERS = Object.fromEntries([
+  [PRIMARY_PHONE, { role: 'primary', name: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary', partnerPhone: PARTNER_PHONE, defaultAccounts: ['BOB', 'ICICI'] }],
+  [PARTNER_PHONE, { role: 'partner', name: process.env.TRACKFLOW_PARTNER_NAME || 'Partner', partnerPhone: PRIMARY_PHONE, defaultAccounts: ['BOB', 'Personal'] }]
+].filter(([phone]) => phone));
 
 // Initialize Database structure
 function getDefaultDb() {
   return {
-    passwords: {
-      master: DEFAULT_PASSWORD,
-      '7418753113': DEFAULT_PASSWORD,
-      '9384931363': DEFAULT_PASSWORD
-    },
+    passwordHashes: {},
     // Shared BOB Account (Common to both users)
     bobAccount: {
       initialBalance: 5000,
@@ -57,14 +45,14 @@ function getDefaultDb() {
     },
     // Private Accounts strictly segregated by phone number
     privateAccounts: {
-      '7418753113': {
+      PRIMARY_PHONE: {
         accounts: ['ICICI'],
         initialBalances: {
           ICICI: 10000
         },
         transactions: []
       },
-      '9384931363': {
+      PARTNER_PHONE: {
         accounts: ['Personal'],
         initialBalances: {
           Personal: 5000
@@ -73,9 +61,9 @@ function getDefaultDb() {
       }
     },
     partnerProfile: {
-      primaryName: 'Harini',
-      partnerName: 'Partner',
-      partnerPhone: '9384931363',
+      primaryName: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary',
+      partnerName: process.env.TRACKFLOW_PARTNER_NAME || 'Partner',
+      partnerPhone: PARTNER_PHONE,
       partnerUpi: '',
       autoNotifyBob: true
     },
@@ -91,7 +79,7 @@ function loadDb() {
       // Ensure structure integrity
       if (!data.bobAccount) data.bobAccount = getDefaultDb().bobAccount;
       if (!data.privateAccounts) data.privateAccounts = getDefaultDb().privateAccounts;
-      if (!data.passwords) data.passwords = getDefaultDb().passwords;
+      if (!data.passwordHashes) data.passwordHashes = {};
       if (!data.partnerProfile) data.partnerProfile = getDefaultDb().partnerProfile;
       return data;
     }
@@ -133,7 +121,6 @@ const MIME_TYPES = {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
@@ -169,11 +156,41 @@ function normalizePhone(phone) {
   return String(phone).replace(/[^0-9]/g, '').slice(-10);
 }
 
+const sessions = new Map();
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const ALLOWED_ORIGIN = process.env.TRACKFLOW_ALLOWED_ORIGIN || '';
+function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  return `${salt}:${crypto.scryptSync(password, salt, 64).toString('hex')}`;
+}
+function verifyPassword(password, stored) {
+  if (!stored || typeof stored !== 'string' || !stored.includes(':')) return false;
+  const [salt, expectedHex] = stored.split(':');
+  const actual = crypto.scryptSync(String(password || ''), salt, 64);
+  const expected = Buffer.from(expectedHex, 'hex');
+  return expected.length === actual.length && crypto.timingSafeEqual(actual, expected);
+}
+function safeEqualString(a, b) {
+  const left = Buffer.from(String(a || ''));
+  const right = Buffer.from(String(b || ''));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+function authenticate(req) {
+  const match = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+  if (!match) return null;
+  const session = sessions.get(match[1]);
+  if (!session || session.expiresAt < Date.now()) {
+    sessions.delete(match[1]);
+    return null;
+  }
+  return session;
+}
 const server = http.createServer(async (req, res) => {
-  // CORS Preflight
+  const origin = req.headers.origin || '';
+  const corsOrigin = ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : '';
+  // CORS preflight. Set TRACKFLOW_ALLOWED_ORIGIN to the exact deployed app origin.
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+      ...(corsOrigin ? { 'Access-Control-Allow-Origin': corsOrigin, 'Vary': 'Origin' } : {}),
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400'
@@ -213,9 +230,15 @@ const server = http.createServer(async (req, res) => {
 
       // Check password
       const db = loadDb();
-      const expectedPassword = db.passwords[cleanPhone] || db.passwords.master || DEFAULT_PASSWORD;
-
-      if (password !== expectedPassword && password !== DEFAULT_PASSWORD) {
+      const configuredPassword = cleanPhone === PRIMARY_PHONE ? PRIMARY_PASSWORD : PARTNER_PASSWORD;
+      if (!configuredPassword) {
+        sendJson(res, 503, { success: false, error: 'Authentication is not configured on the server.' });
+        return;
+      }
+      const passwordValid = db.passwordHashes[cleanPhone]
+        ? verifyPassword(password, db.passwordHashes[cleanPhone])
+        : safeEqualString(password, configuredPassword);
+      if (!passwordValid) {
         sendJson(res, 401, {
           success: false,
           error: 'Incorrect password. Please verify and try again.'
@@ -224,10 +247,11 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Generate session token
-      const token = 'tf_' + cleanPhone + '_' + crypto.randomBytes(16).toString('hex');
+      const token = crypto.randomBytes(32).toString('hex');
+      sessions.set(token, { phone: cleanPhone, role: authConfig.role, expiresAt: Date.now() + SESSION_TTL_MS });
 
       // Return user profile and allowed accounts
-      const userAccounts = cleanPhone === '7418753113'
+      const userAccounts = cleanPhone === PRIMARY_PHONE
         ? ['BOB', 'ICICI']
         : ['BOB', ...(db.privateAccounts[cleanPhone]?.accounts || ['Personal'])];
 
@@ -252,8 +276,10 @@ const server = http.createServer(async (req, res) => {
   // Auth: Change Password
   if (reqPath === '/api/auth/change-password' && req.method === 'POST') {
     try {
-      const { phone, currentPassword, newPassword } = await parseBody(req);
-      const cleanPhone = normalizePhone(phone);
+      const session = authenticate(req);
+      if (!session) { sendJson(res, 401, { success: false, error: 'Authentication required.' }); return; }
+      const { currentPassword, newPassword } = await parseBody(req);
+      const cleanPhone = session.phone;
       if (!AUTHORIZED_NUMBERS[cleanPhone]) {
         sendJson(res, 403, { success: false, error: 'Unauthorized user' });
         return;
@@ -265,15 +291,17 @@ const server = http.createServer(async (req, res) => {
       }
 
       const db = loadDb();
-      const expectedPassword = db.passwords[cleanPhone] || db.passwords.master || DEFAULT_PASSWORD;
-
-      if (currentPassword !== expectedPassword && currentPassword !== DEFAULT_PASSWORD) {
+      const configuredPassword = cleanPhone === PRIMARY_PHONE ? PRIMARY_PASSWORD : PARTNER_PASSWORD;
+      const currentValid = db.passwordHashes[cleanPhone]
+        ? verifyPassword(currentPassword, db.passwordHashes[cleanPhone])
+        : !!configuredPassword && safeEqualString(currentPassword, configuredPassword);
+      if (!currentValid) {
         sendJson(res, 401, { success: false, error: 'Current password is incorrect' });
         return;
       }
 
-      db.passwords[cleanPhone] = newPassword;
-      db.passwords.master = newPassword; // Sync master
+      db.passwordHashes[cleanPhone] = hashPassword(newPassword);
+      sessions.delete((req.headers.authorization || '').replace(/^Bearer /, ''));
       saveDb(db);
 
       sendJson(res, 200, { success: true, message: 'Password updated successfully' });
@@ -286,7 +314,9 @@ const server = http.createServer(async (req, res) => {
 
   // Sync: Pull latest cloud data for a specific user
   if (reqPath === '/api/sync/pull' && req.method === 'GET') {
-    const phone = normalizePhone(params.get('phone'));
+    const session = authenticate(req);
+    if (!session) { sendJson(res, 401, { success: false, error: 'Authentication required.' }); return; }
+    const phone = session.phone;
     if (!AUTHORIZED_NUMBERS[phone]) {
       sendJson(res, 403, { success: false, error: 'Unauthorized user phone' });
       return;
@@ -308,17 +338,17 @@ const server = http.createServer(async (req, res) => {
       transactions: []
     };
 
-    if (phone === '7418753113') {
+    if (phone === PRIMARY_PHONE) {
       // Primary User gets ICICI
-      const pStore = db.privateAccounts['7418753113'] || { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] };
+      const pStore = db.privateAccounts[PRIMARY_PHONE] || { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] };
       privateData = {
         accounts: pStore.accounts || ['ICICI'],
         initialBalances: pStore.initialBalances || { ICICI: 10000 },
         transactions: pStore.transactions || []
       };
-    } else if (phone === '9384931363') {
+    } else if (phone === PARTNER_PHONE) {
       // Partner gets Partner's private account(s), NEVER ICICI!
-      const pStore = db.privateAccounts['9384931363'] || { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] };
+      const pStore = db.privateAccounts[PARTNER_PHONE] || { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] };
       privateData = {
         accounts: pStore.accounts || ['Personal'],
         initialBalances: pStore.initialBalances || { Personal: 5000 },
@@ -340,8 +370,10 @@ const server = http.createServer(async (req, res) => {
   // Sync: Push updates from client to cloud
   if (reqPath === '/api/sync/push' && req.method === 'POST') {
     try {
+      const session = authenticate(req);
+      if (!session) { sendJson(res, 401, { success: false, error: 'Authentication required.' }); return; }
       const payload = await parseBody(req);
-      const phone = normalizePhone(payload.phone);
+      const phone = session.phone;
       if (!AUTHORIZED_NUMBERS[phone]) {
         sendJson(res, 403, { success: false, error: 'Unauthorized user phone' });
         return;
@@ -415,15 +447,17 @@ const server = http.createServer(async (req, res) => {
   // Account Add: Partner or User adding a new private account
   if (reqPath === '/api/accounts/add' && req.method === 'POST') {
     try {
-      const { phone, accountName, initialBalance } = await parseBody(req);
-      const cleanPhone = normalizePhone(phone);
+      const session = authenticate(req);
+      if (!session) { sendJson(res, 401, { success: false, error: 'Authentication required.' }); return; }
+      const { accountName, initialBalance } = await parseBody(req);
+      const cleanPhone = session.phone;
       if (!AUTHORIZED_NUMBERS[cleanPhone]) {
         sendJson(res, 403, { success: false, error: 'Unauthorized user phone' });
         return;
       }
 
       const accName = (accountName || '').trim();
-      if (!accName || accName.toUpperCase() === 'BOB' || accName.toUpperCase() === 'ICICI' && cleanPhone !== '7418753113') {
+      if (!accName || accName.toUpperCase() === 'BOB' || accName.toUpperCase() === 'ICICI' && cleanPhone !== PRIMARY_PHONE) {
         sendJson(res, 400, { success: false, error: 'Invalid account name' });
         return;
       }
@@ -473,7 +507,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       'Content-Type': contentType,
       'Cache-Control': 'no-cache',
-      'Access-Control-Allow-Origin': '*'
+      ...(corsOrigin ? { 'Access-Control-Allow-Origin': corsOrigin, 'Vary': 'Origin' } : {})
     });
 
     fs.createReadStream(filePath).pipe(res);
@@ -482,5 +516,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`TrackFlow Backend & Cloud Sync Server running on port ${PORT}`);
-  console.log(`Authorized Numbers: 7418753113 (Primary) & 9384931363 (Partner)`);
+  console.log('Authorized users loaded from deployment environment configuration.');
 });
