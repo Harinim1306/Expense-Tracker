@@ -56,7 +56,9 @@ const CloudSync = (() => {
   }
 
   function isLoggedIn() {
-    return getSession() !== null;
+    const session = getSession();
+    // Expire legacy client-only sessions and sessions without a server token.
+    return !!(session && session.token && session.loginTime && Date.now() - session.loginTime < 12 * 60 * 60 * 1000);
   }
 
   function normalizePhone(phone) {
