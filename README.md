@@ -91,7 +91,6 @@ Set these variables in `.env` or your hosting provider before starting the serve
 - `TRACKFLOW_PARTNER_PHONE`: partner user's 10-digit phone number
 - `TRACKFLOW_PASSWORD`: the shared login password for both authorized users
 - `TRACKFLOW_TOKEN_SECRET`: a separate, randomly generated secret used to sign login tokens (recommended; do not reuse the password)
-- `TRACKFLOW_PRIMARY_NAME` and `TRACKFLOW_PARTNER_NAME`: optional display names
 - `TRACKFLOW_ALLOWED_ORIGIN`: exact browser origin of the deployed frontend (for example, `https://your-app.example`); set this when the frontend and API use different origins
 
 The server refuses login when the account passwords are not configured. Existing client-only sessions are no longer accepted. After deploying this change, configure the environment variables and sign in again on every device. Rotate any credentials that were previously committed to source control. The server stores newly changed passwords as salted scrypt hashes.
