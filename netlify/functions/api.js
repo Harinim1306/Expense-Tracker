@@ -4,6 +4,9 @@
 const crypto = require('crypto');
 const PRIMARY_PHONE = normalizePhone(process.env.TRACKFLOW_PRIMARY_PHONE);
 const PARTNER_PHONE = normalizePhone(process.env.TRACKFLOW_PARTNER_PHONE);
+const PARTNER_NAME = (process.env.TRACKFLOW_PARTNER_NAME || 'Partner').trim();
+const PARTNER_UPI_ID = (process.env.TRACKFLOW_PARTNER_UPI_ID || '').trim();
+const AUTO_NOTIFY_BOB = !['false', '0', 'no', 'off'].includes((process.env.TRACKFLOW_AUTO_NOTIFY_BOB || 'true').trim().toLowerCase());
 const SHARED_PASSWORD = (process.env.TRACKFLOW_PASSWORD || '').trim();
 const TOKEN_SECRET = process.env.TRACKFLOW_TOKEN_SECRET || process.env.TRACKFLOW_PASSWORD || '';
 const ALLOWED_ORIGIN = process.env.TRACKFLOW_ALLOWED_ORIGIN || '';
@@ -221,7 +224,7 @@ exports.handler = async (event, context) => {
           lastUpdated: db.lastUpdated,
           bob: bobData,
           private: privateData,
-          partnerProfile: db.partnerProfile
+          partnerProfile: getStaticPartnerProfile()
         })
       };
     }
@@ -276,10 +279,7 @@ exports.handler = async (event, context) => {
         }
       }
 
-      if (payload.partnerProfile) {
-        db.partnerProfile = { ...db.partnerProfile, ...payload.partnerProfile };
-      }
-
+// Partner contact settings are server-controlled by Netlify environment variables.
       await setStoreData(db, event);
 
       return {
