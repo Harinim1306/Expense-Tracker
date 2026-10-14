@@ -44,10 +44,10 @@ let memoryDb = {
   lastUpdated: Date.now()
 };
 
-async function getStoreData() {
+async function getStoreData(event) {
   try {
-    // Attempt Netlify Blobs if available in environment
-    const { getStore } = require('@netlify/blobs');
+    const { connectLambda, getStore } = require('@netlify/blobs');
+    connectLambda(event);
     const store = getStore('trackflow_ledger');
     const blob = await store.get('db_state', { type: 'json' });
     if (blob) {
@@ -59,11 +59,12 @@ async function getStoreData() {
   return memoryDb;
 }
 
-async function setStoreData(data) {
+async function setStoreData(data, event) {
   data.lastUpdated = Date.now();
   memoryDb = data;
   try {
-    const { getStore } = require('@netlify/blobs');
+    const { connectLambda, getStore } = require('@netlify/blobs');
+    connectLambda(event);
     const store = getStore('trackflow_ledger');
     await store.setJSON('db_state', data);
   } catch (err) {
@@ -120,7 +121,7 @@ exports.handler = async (event, context) => {
   const params = event.queryStringParameters || {};
 
   try {
-    const db = await getStoreData();
+    const db = await getStoreData(event);
 
     // 1. Health check
     if (path === '/health' || path === '') {
@@ -277,7 +278,7 @@ exports.handler = async (event, context) => {
         db.partnerProfile = { ...db.partnerProfile, ...payload.partnerProfile };
       }
 
-      await setStoreData(db);
+      await setStoreData(db, event);
 
       return {
         statusCode: 200,
@@ -322,7 +323,7 @@ exports.handler = async (event, context) => {
       }
       db.privateAccounts[cleanPhone].initialBalances[accName] = Number(initialBalance || 0);
 
-      await setStoreData(db);
+      await setStoreData(db, event);
 
       return {
         statusCode: 200,
