@@ -41,8 +41,8 @@ const SHARED_PASSWORD = process.env.TRACKFLOW_PASSWORD || '';
 const PRIMARY_PASSWORD = SHARED_PASSWORD;
 const PARTNER_PASSWORD = SHARED_PASSWORD;
 const AUTHORIZED_NUMBERS = Object.fromEntries([
-  [PRIMARY_PHONE, { role: 'primary', name: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary', partnerPhone: PARTNER_PHONE, defaultAccounts: ['BOB', 'ICICI'] }],
-  [PARTNER_PHONE, { role: 'partner', name: process.env.TRACKFLOW_PARTNER_NAME || 'Partner', partnerPhone: PRIMARY_PHONE, defaultAccounts: ['BOB', 'Personal'] }]
+  [PRIMARY_PHONE, { role: 'primary', name: 'Primary', partnerPhone: PARTNER_PHONE, defaultAccounts: ['BOB', 'ICICI'] }],
+  [PARTNER_PHONE, { role: 'partner', name: 'Partner', partnerPhone: PRIMARY_PHONE, defaultAccounts: ['BOB', 'Personal'] }]
 ].filter(([phone]) => phone));
 
 // Initialize Database structure
@@ -72,8 +72,8 @@ function getDefaultDb() {
       [PARTNER_PHONE]: { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] }
     },
     partnerProfile: {
-      primaryName: process.env.TRACKFLOW_PRIMARY_NAME || 'Primary',
-      partnerName: process.env.TRACKFLOW_PARTNER_NAME || 'Partner',
+      primaryName: 'Primary',
+      partnerName: 'Partner',
       partnerPhone: PARTNER_PHONE,
       partnerUpi: '',
       autoNotifyBob: true
