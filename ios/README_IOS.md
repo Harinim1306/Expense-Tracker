@@ -10,7 +10,7 @@ TrackFlow already has a complete **Progressive Web App (PWA)** manifest and serv
 
 1. On your iPhone, open **Safari**.
 2. Navigate to your app:
-   - **On home Wi-Fi**: `http://10.70.8.97:3000`
+   - **On home Wi-Fi**: use your local TrackFlow server address.
    - **On Netlify**: `https://your-app.netlify.app`
 3. Tap the **Share icon** (the square with an arrow pointing up at the bottom of Safari).
 4. Scroll down and tap **"Add to Home Screen"**.
@@ -33,17 +33,17 @@ If you have a Mac with **Xcode** (or an Apple Developer account) and want an act
 4. Click **Create**.
 
 ### Step 2: Copy the Swift files
-In your project navigator, replace/add the files from the `ios/` folder:
-- Replace `TrackFlowApp.swift` with [TrackFlowApp.swift](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/ios/TrackFlowApp.swift)
-- Replace `ContentView.swift` with [ContentView.swift](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/ios/ContentView.swift)
-- Add [WebView.swift](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/ios/WebView.swift)
+In your project navigator, use the files in this repository's `ios/` folder:
+- Replace `TrackFlowApp.swift` with [TrackFlowApp.swift](./TrackFlowApp.swift)
+- Replace `ContentView.swift` with [ContentView.swift](./ContentView.swift)
+- Add [WebView.swift](./WebView.swift)
 
 ### Step 3: Bundle Offline Web Assets (Optional for Offline-First)
-- Drag [standalone.html](file:///c:/Users/HariniManikandan/Downloads/Expense%20tracker/standalone.html) into your Xcode project.
+- Drag [standalone.html](../standalone.html) into your Xcode project.
 - Check **"Copy items if needed"** and add to target `TrackFlow`.
 
 ### Step 4: Configure Info.plist (App Transport Security)
-If testing on local network (`http://10.70.8.97:3000` or local IP), add this to your project's `Info.plist`:
+If testing on a local network using HTTP, add this to your project's `Info.plist`:
 
 ```xml
 <key>NSAppTransportSecurity</key>
