@@ -5164,6 +5164,8 @@ async function performCloudSync() {
           state.privateAccounts.transactions = Array.from(privMap.values()).sort(
             (a, b) => new Date(b.datetime) - new Date(a.datetime)
           );
+          // Remove stale private transactions from the general ledger as well.
+          state.transactions = state.transactions.filter(t => !deletedPrivate.has(t.id));
         }
       }
 
