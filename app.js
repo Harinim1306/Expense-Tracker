@@ -1972,6 +1972,7 @@ function setupEventListeners() {
   }
   document.getElementById('quickAddMoneyBtn').addEventListener('click', () => openFundsModal('deposit'));
   document.getElementById('quickRemoveMoneyBtn')?.addEventListener('click', () => openFundsModal('withdrawal'));
+  document.getElementById('removeFundsFromSettingsBtn')?.addEventListener('click', () => openFundsModal('withdrawal'));
 
   document.getElementById('closeAddFundsBtn').addEventListener('click', () => {
     closeModal('addFundsModal');
