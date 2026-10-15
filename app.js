@@ -334,6 +334,7 @@ let isCloudSyncing = false;
 let autoSyncTimer = null;
 let fundsMode = 'deposit';
 const PARTNER_SETTINGS_PENDING_KEY = 'trackflow_partner_settings_pending_v1';
+const INITIAL_BALANCES_PENDING_KEY = 'trackflow_initial_balances_pending_v1';
 
 function hasPendingPartnerSettings() {
   try { return localStorage.getItem(PARTNER_SETTINGS_PENDING_KEY) === '1'; }
@@ -378,7 +379,7 @@ async function performCloudSync() {
     if (pullResult.success) {
       // Merge BOB shared data (cloud data takes precedence for shared)
       if (pullResult.bob) {
-        if (pullResult.bob.initial !== undefined) {
+        if (pullResult.bob.initial !== undefined && localStorage.getItem(INITIAL_BALANCES_PENDING_KEY) !== '1') {
           state.initialBalances.BOB = Number(pullResult.bob.initial);
         }
         if (Array.isArray(pullResult.bob.transactions)) {
@@ -405,7 +406,7 @@ async function performCloudSync() {
         }
         if (pullResult.private.initialBalances) {
           // Primary's ICICI is stored in private
-          if (CloudSync.isPrimary() && pullResult.private.initialBalances.ICICI !== undefined) {
+          if (CloudSync.isPrimary() && pullResult.private.initialBalances.ICICI !== undefined && localStorage.getItem(INITIAL_BALANCES_PENDING_KEY) !== '1') {
             state.initialBalances.ICICI = Number(pullResult.private.initialBalances.ICICI);
           }
           state.privateAccounts.initialBalances = { ...state.privateAccounts.initialBalances, ...pullResult.private.initialBalances };
@@ -463,6 +464,9 @@ async function performCloudSync() {
     // Clear the pending marker only after the server confirms the save.
     if (hasPendingPartnerSettings()) {
       localStorage.removeItem(PARTNER_SETTINGS_PENDING_KEY);
+    }
+    if (localStorage.getItem(INITIAL_BALANCES_PENDING_KEY) === '1') {
+      localStorage.removeItem(INITIAL_BALANCES_PENDING_KEY);
     }
     state.lastCloudSync = Date.now();
     setSyncStatus('Synced', 'ok');
@@ -1944,6 +1948,7 @@ function setupEventListeners() {
 
     state.initialBalances.BOB = bobVal;
     state.initialBalances.ICICI = iciciVal;
+    try { localStorage.setItem(INITIAL_BALANCES_PENDING_KEY, '1'); } catch (err) { console.warn('Could not mark baseline update pending cloud sync', err); }
     saveData();
     renderAll();
     showToast('Starting balances updated!');
