@@ -39,6 +39,7 @@ let memoryDb = {
     [PRIMARY_PHONE]: { accounts: ['ICICI'], initialBalances: { ICICI: 10000 }, transactions: [] },
     [PARTNER_PHONE]: { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] }
   },
+  deletedTransactions: { bob: [], private: {} },
   partnerProfile: {
     primaryName: 'Primary',
     partnerName: 'Partner',
@@ -203,9 +204,12 @@ exports.handler = async (event, context) => {
         };
       }
 
+      db.deletedTransactions = db.deletedTransactions || { bob: [], private: {} };
+      const deletedBob = new Set(db.deletedTransactions.bob || []);
       const bobData = {
-        initial: db.bobAccount.initialBalance || 5000,
-        transactions: db.bobAccount.transactions || [],
+        initial: db.bobAccount.initialBalance ?? 5000,
+        transactions: (db.bobAccount.transactions || []).filter(t => !deletedBob.has(t.id)),
+        deletedIds: Array.from(deletedBob),
         reminders: db.bobAccount.reminders || []
       };
 
@@ -215,14 +219,16 @@ exports.handler = async (event, context) => {
         privateData = {
           accounts: pStore.accounts || ['ICICI'],
           initialBalances: pStore.initialBalances || { ICICI: 10000 },
-          transactions: pStore.transactions || []
+          transactions: (pStore.transactions || []).filter(t => !(db.deletedTransactions.private[phone] || []).includes(t.id)),
+          deletedIds: db.deletedTransactions.private[phone] || []
         };
       } else if (phone === PARTNER_PHONE) {
         const pStore = db.privateAccounts[PARTNER_PHONE] || { accounts: ['Personal'], initialBalances: { Personal: 5000 }, transactions: [] };
         privateData = {
           accounts: pStore.accounts || ['Personal'],
           initialBalances: pStore.initialBalances || { Personal: 5000 },
-          transactions: pStore.transactions || []
+          transactions: (pStore.transactions || []).filter(t => !(db.deletedTransactions.private[phone] || []).includes(t.id)),
+          deletedIds: db.deletedTransactions.private[phone] || []
         };
       }
 
@@ -258,10 +264,14 @@ exports.handler = async (event, context) => {
         if (payload.bob.initial !== undefined) {
           db.bobAccount.initialBalance = Number(payload.bob.initial);
         }
+        if (Array.isArray(payload.bob.deletedIds)) {
+          db.deletedTransactions.bob = Array.from(new Set([...(db.deletedTransactions.bob || []), ...payload.bob.deletedIds.filter(id => typeof id === 'string')]));
+        }
         if (Array.isArray(payload.bob.transactions)) {
-          const existingMap = new Map((db.bobAccount.transactions || []).map(t => [t.id, t]));
+          const deleted = new Set(db.deletedTransactions.bob || []);
+          const existingMap = new Map((db.bobAccount.transactions || []).filter(t => !deleted.has(t.id)).map(t => [t.id, t]));
           payload.bob.transactions.forEach(t => {
-            if (t.account === 'BOB') existingMap.set(t.id, t);
+            if (t.account === 'BOB' && !deleted.has(t.id)) existingMap.set(t.id, t);
           });
           db.bobAccount.transactions = Array.from(existingMap.values()).sort(
             (a, b) => new Date(b.datetime) - new Date(a.datetime)
@@ -277,12 +287,18 @@ exports.handler = async (event, context) => {
           db.privateAccounts[phone] = { accounts: [], initialBalances: {}, transactions: [] };
         }
         const userPrivate = db.privateAccounts[phone];
+        db.deletedTransactions = db.deletedTransactions || { bob: [], private: {} };
+        db.deletedTransactions.private = db.deletedTransactions.private || {};
+        if (Array.isArray(payload.private.deletedIds)) {
+          db.deletedTransactions.private[phone] = Array.from(new Set([...(db.deletedTransactions.private[phone] || []), ...payload.private.deletedIds.filter(id => typeof id === 'string')]));
+        }
         if (Array.isArray(payload.private.accounts)) userPrivate.accounts = payload.private.accounts;
         if (payload.private.initialBalances) userPrivate.initialBalances = { ...userPrivate.initialBalances, ...payload.private.initialBalances };
         if (Array.isArray(payload.private.transactions)) {
-          const privMap = new Map((userPrivate.transactions || []).map(t => [t.id, t]));
+          const deleted = new Set(db.deletedTransactions.private[phone] || []);
+          const privMap = new Map((userPrivate.transactions || []).filter(t => !deleted.has(t.id)).map(t => [t.id, t]));
           payload.private.transactions.forEach(t => {
-            if (t.account !== 'BOB') privMap.set(t.id, t);
+            if (t.account !== 'BOB' && !deleted.has(t.id)) privMap.set(t.id, t);
           });
           userPrivate.transactions = Array.from(privMap.values()).sort(
             (a, b) => new Date(b.datetime) - new Date(a.datetime)
