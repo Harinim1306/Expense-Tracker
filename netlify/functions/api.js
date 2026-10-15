@@ -260,6 +260,10 @@ exports.handler = async (event, context) => {
         };
       }
 
+      // Backward-compatible initialization for existing stored ledgers.
+      db.deletedTransactions = db.deletedTransactions || { bob: [], private: {} };
+      db.deletedTransactions.private = db.deletedTransactions.private || {};
+
       if (payload.bob) {
         if (payload.bob.initial !== undefined) {
           db.bobAccount.initialBalance = Number(payload.bob.initial);
