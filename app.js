@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   SETTINGS: 'trackflow_settings_v1',
   REMINDERS: 'trackflow_reminders_v1',
   NOTIFICATIONS: 'trackflow_notifications_v1',
-  PRIVATE_ACCOUNTS: 'trackflow_private_accounts_v1'
+  PRIVATE_ACCOUNTS: 'trackflow_private_accounts_v1',
+  DELETED_TRANSACTIONS: 'trackflow_deleted_transactions_v1'
 };
 
 // Application State
@@ -18,6 +19,7 @@ let state = {
     ICICI: 10000
   },
   transactions: [],
+  deletedTransactionIds: { BOB: [], PRIVATE: [] },
   partnerReminders: [],
   privateAccounts: {   // Private accounts for the logged-in user only (never synced cross-partner)
     accounts: [],      // e.g. ['ICICI'] for primary, ['Personal'] for partner
@@ -330,6 +332,7 @@ function setupAuthListeners() {
 // ==========================================================================
 let isCloudSyncing = false;
 let autoSyncTimer = null;
+let fundsMode = 'deposit';
 const PARTNER_SETTINGS_PENDING_KEY = 'trackflow_partner_settings_pending_v1';
 
 function hasPendingPartnerSettings() {
@@ -379,9 +382,11 @@ async function performCloudSync() {
           state.initialBalances.BOB = Number(pullResult.bob.initial);
         }
         if (Array.isArray(pullResult.bob.transactions)) {
-          // Merge: cloud + local, de-duplicate by id
-          const localMap = new Map(state.transactions.filter(t => t.account === 'BOB').map(t => [t.id, t]));
-          pullResult.bob.transactions.forEach(t => localMap.set(t.id, t));
+          // Merge cloud + local, honoring server-side deletion tombstones.
+          const deletedBob = new Set([...(state.deletedTransactionIds.BOB || []), ...(pullResult.bob.deletedIds || [])]);
+          state.deletedTransactionIds.BOB = Array.from(deletedBob);
+          const localMap = new Map(state.transactions.filter(t => t.account === 'BOB' && !deletedBob.has(t.id)).map(t => [t.id, t]));
+          pullResult.bob.transactions.filter(t => !deletedBob.has(t.id)).forEach(t => localMap.set(t.id, t));
           // Keep non-BOB local txs + merged BOB
           state.transactions = [
             ...state.transactions.filter(t => t.account !== 'BOB'),
@@ -406,8 +411,10 @@ async function performCloudSync() {
           state.privateAccounts.initialBalances = { ...state.privateAccounts.initialBalances, ...pullResult.private.initialBalances };
         }
         if (Array.isArray(pullResult.private.transactions)) {
-          const privMap = new Map((state.privateAccounts.transactions || []).map(t => [t.id, t]));
-          pullResult.private.transactions.forEach(t => privMap.set(t.id, t));
+          const deletedPrivate = new Set([...(state.deletedTransactionIds.PRIVATE || []), ...(pullResult.private.deletedIds || [])]);
+          state.deletedTransactionIds.PRIVATE = Array.from(deletedPrivate);
+          const privMap = new Map((state.privateAccounts.transactions || []).filter(t => !deletedPrivate.has(t.id)).map(t => [t.id, t]));
+          pullResult.private.transactions.filter(t => !deletedPrivate.has(t.id)).forEach(t => privMap.set(t.id, t));
           state.privateAccounts.transactions = Array.from(privMap.values()).sort(
             (a, b) => new Date(b.datetime) - new Date(a.datetime)
           );
@@ -429,14 +436,16 @@ async function performCloudSync() {
     const bobPayload = {
       initial: state.initialBalances.BOB,
       transactions: state.transactions.filter(t => t.account === 'BOB'),
-      reminders: state.partnerReminders
+      reminders: state.partnerReminders,
+      deletedIds: state.deletedTransactionIds.BOB || []
     };
 
     // Build private payload (primary sends ICICI under private)
     let privatePayload = {
       accounts: state.privateAccounts.accounts,
       initialBalances: { ...state.privateAccounts.initialBalances },
-      transactions: state.privateAccounts.transactions
+      transactions: state.privateAccounts.transactions,
+      deletedIds: state.deletedTransactionIds.PRIVATE || []
     };
     if (CloudSync.isPrimary()) {
       privatePayload.accounts = ['ICICI', ...privatePayload.accounts.filter(a => a !== 'ICICI')];
@@ -535,6 +544,9 @@ function loadData() {
       state.privateAccounts = { ...state.privateAccounts, ...JSON.parse(savedPrivate) };
     }
 
+    const savedDeleted = localStorage.getItem(STORAGE_KEYS.DELETED_TRANSACTIONS);
+    if (savedDeleted) state.deletedTransactionIds = { ...state.deletedTransactionIds, ...JSON.parse(savedDeleted) };
+
     const savedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (savedTx) {
       state.transactions = JSON.parse(savedTx);
@@ -563,6 +575,7 @@ function saveData(options = {}) {
   try {
     localStorage.setItem(STORAGE_KEYS.INITIAL, JSON.stringify(state.initialBalances));
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(state.transactions));
+    localStorage.setItem(STORAGE_KEYS.DELETED_TRANSACTIONS, JSON.stringify(state.deletedTransactionIds));
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(state.partner));
     localStorage.setItem(STORAGE_KEYS.REMINDERS, JSON.stringify(state.partnerReminders));
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(state.notificationSettings));
@@ -591,14 +604,14 @@ function calculateBalances() {
       if (tx.account === 'BOB') bobTotal += amt;
       if (tx.account === 'ICICI') iciciTotal += amt;
     } else {
-      // expense
+      // Expenses and withdrawals both reduce balances; withdrawals are excluded from spending analytics.
       if (tx.account === 'BOB') {
         bobTotal -= amt;
-        bobSpent += amt;
+        if (tx.type !== 'withdrawal') bobSpent += amt;
       }
       if (tx.account === 'ICICI') {
         iciciTotal -= amt;
-        iciciSpent += amt;
+        if (tx.type !== 'withdrawal') iciciSpent += amt;
       }
     }
   });
@@ -1400,7 +1413,13 @@ function createLedgerRow(tx, allowDelete = false) {
 
 function deleteTransaction(id) {
   if (confirm('Delete this transaction?')) {
+    const txToDelete = state.transactions.find((t) => t.id === id) || (state.privateAccounts.transactions || []).find((t) => t.id === id);
+    if (txToDelete) {
+      const bucket = txToDelete.account === 'BOB' ? 'BOB' : 'PRIVATE';
+      state.deletedTransactionIds[bucket] = Array.from(new Set([...(state.deletedTransactionIds[bucket] || []), id]));
+    }
     state.transactions = state.transactions.filter((t) => t.id !== id);
+    state.privateAccounts.transactions = (state.privateAccounts.transactions || []).filter((t) => t.id !== id);
     saveData();
     renderAll();
     showToast('Transaction removed from ledger');
@@ -1914,8 +1933,12 @@ function setupEventListeners() {
   // Initial Balances Form in Settings
   document.getElementById('initialBalancesForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const bobVal = Number(document.getElementById('setBobInitial').value || 0);
-    const iciciVal = Number(document.getElementById('setIciciInitial').value || 0);
+    const bobVal = Number(document.getElementById('setBobInitial').value);
+    const iciciVal = Number(document.getElementById('setIciciInitial').value);
+    if (!Number.isFinite(bobVal) || !Number.isFinite(iciciVal) || bobVal < 0 || iciciVal < 0) {
+      showToast('Initial balances must be valid numbers greater than or equal to zero.', 'warning');
+      return;
+    }
 
     state.initialBalances.BOB = bobVal;
     state.initialBalances.ICICI = iciciVal;
@@ -1932,10 +1955,16 @@ function setupEventListeners() {
     });
   });
 
-  // Deposit Funds Modal
-  document.getElementById('quickAddMoneyBtn').addEventListener('click', () => {
+  // Add or remove funds from an account.
+  function openFundsModal(mode) {
+    fundsMode = mode;
+    document.querySelector('#addFundsModal .dialog-title').textContent = mode === 'withdrawal' ? 'Remove Funds / Withdrawal' : 'Deposit / Add Funds';
+    document.querySelector('#addFundsForm button[type="submit"]').textContent = mode === 'withdrawal' ? 'Remove from Balance' : 'Add to Balance';
+    document.getElementById('fundNote').placeholder = mode === 'withdrawal' ? 'e.g. Cash withdrawal, transfer out' : 'e.g. Salary, UPI Transfer, Cash';
     openModal('addFundsModal');
-  });
+  }
+  document.getElementById('quickAddMoneyBtn').addEventListener('click', () => openFundsModal('deposit'));
+  document.getElementById('quickRemoveMoneyBtn')?.addEventListener('click', () => openFundsModal('withdrawal'));
 
   document.getElementById('closeAddFundsBtn').addEventListener('click', () => {
     closeModal('addFundsModal');
@@ -2237,10 +2266,10 @@ function handleAddFundsSubmit(e) {
 
   const newTx = {
     id: 'tx_' + Date.now(),
-    type: 'deposit',
+    type: fundsMode,
     amount: amount,
     account: account,
-    category: 'Deposit / Inflow',
+    category: fundsMode === 'withdrawal' ? 'Withdrawal / Transfer Out' : 'Deposit / Inflow',
     toWhom: 'Self Account',
     description: note,
     datetime: new Date().toISOString()
@@ -2254,7 +2283,7 @@ function handleAddFundsSubmit(e) {
   document.getElementById('fundNote').value = '';
 
   renderAll();
-  showToast(`Added ${formatINR(amount)} to ${account}`);
+  showToast(fundsMode === 'withdrawal' ? `Removed ${formatINR(amount)} from ${account}` : `Added ${formatINR(amount)} to ${account}`);
 }
 
 // ==========================================================================
